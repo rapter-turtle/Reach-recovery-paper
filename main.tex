@@ -1,0 +1,446 @@
+\documentclass[5p,times,authoryear]{elsarticle}
+
+\usepackage{ecrc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{subcaption}
+\usepackage[title]{appendix}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\AtBeginDocument{\renewcommand{\harvardand}{\&}}
+\setcitestyle{authoryear,open={(},close={)}}
+\usepackage[figuresright]{rotating}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.misc,shapes.symbols,calc,backgrounds,fit}
+\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue]{hyperref}
+\usepackage{cleveref}
+
+\volume{00}
+\firstpage{1}
+\journalname{Control Engineering Practice}
+\runauth{}
+\jid{procs}
+
+\begin{document}
+
+\begin{frontmatter}
+\dochead{}
+
+\title{Robust Cradle Recovery of an Underactuated USV via Reach Avoid Reachability}
+
+\author{Kiyong Park}
+\ead{qkrrldyd777@kaist.ac.kr}
+\author{Jinwhan Kim\corref{cor1}}
+\ead{jinwhan@kaist.ac.kr}
+\cortext[cor1]{Corresponding author.}
+\address{Department of Mechanical Engineering, Korea Advanced Institute of Science and Technology (KAIST), Daejeon 34141, Republic of Korea}
+
+\begin{abstract}
+This paper presents a certified two phase framework for recovering an underactuated unmanned surface vehicle (USV) into a cradle mounted on the side of a moving mothership. The approach and dynamic positioning phase is handled by an existing disturbance observer based model predictive controller with reach avoid control barrier functions, while the terminal docking phase, where a hand designed funnel barrier cannot guarantee that an admissible input exists under underactuation and actuator saturation, is reformulated as a robust reach avoid problem and solved by reinforcement learning. The discounted reach avoid Bellman backup is extended to a bounded disturbance game in which a protagonist control policy minimises the value and an adversary disturbance policy maximises it, and the extension preserves both the under approximation property and convergence to the true reach avoid set as the discount tends to one. Membership in the learned reach avoid set certifies the transition between the two phases and triggers the fallback, replacing an earlier dwell time heuristic. In Monte Carlo simulations under the worst case adversary the learned policy completed roughly 94 percent of 500 docking trials with a mean docking time near 19 s, and processor in the loop experiments confirmed real time feasibility on embedded hardware.
+\end{abstract}
+
+\begin{keyword}
+Unmanned surface vehicle \sep autonomous recovery \sep reach avoid \sep reinforcement learning \sep Hamilton Jacobi reachability \sep safe learning
+\end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}\label{sec_intro}
+
+Launch and recovery is the operational bottleneck of unmanned surface vehicle (USV) deployment from a mothership. Recovery into a cradle mounted on the side of a moving ship is the most demanding variant, because the vehicle must enter a narrow pocket that translates at the ship speed while wave and wake disturbances act on it, and because contact with the cradle walls or the hull carries the full cost of a collision. In our setting the vehicle is a small catamaran with a single stern thruster and a rudder, so sway is unactuated and the available thrust and rudder rates are severely limited relative to the relative motion that must be cancelled \citep{fossen2011handbook}.
+
+We structure recovery in two phases. Phase 1 covers approach and dynamic positioning alongside the mothership and is handled by our disturbance observer based model predictive controller with reach avoid control barrier functions \citep{lee2026recovery}. Phase 2 is the docking itself, the short and violent transit from a station keeping point into the cradle pocket. In the earlier design Phase 2 was governed by a hand designed funnel barrier that shrinks the admissible lateral error as the vehicle closes on the cradle. This construction fails precisely where it matters. A geometric barrier certifies a set of states, not the existence of an admissible input that keeps the state inside it, and under unactuated sway, forward only thrust, and slow actuator slew the barrier condition frequently demands inputs the vehicle cannot produce. The observed failure mechanism was actuator saturation at the funnel edge followed by drift into a wall.
+
+Hamilton Jacobi (HJ) reachability resolves this defect in principle, because the reach avoid value function encodes exactly the states from which some admissible input drives the system into the target while avoiding the obstacles under the worst admissible disturbance \citep{lygeros2004reachability, mitchell2005time, margellos2011hamilton, fisac2015reach, bansal2017hamilton}. Grid based HJ solvers, however, scale exponentially in the state dimension and are impractical for the eight dimensional cradle relative model considered here, which includes the actuator states. A line of work has therefore recast the HJ backup as a reinforcement learning problem, introducing a discounted safety backup that is a contraction \citep{fisac2019bridging}, extending it from pure avoidance to reach avoid objectives \citep{hsu2021safety}, and coupling reachability with performance optimization \citep{yu2022reachability}. This paper combines the adversarial disturbance game with the discounted reach avoid backup and applies the result to certify a complete recovery system.
+
+The problem must be posed as reach avoid rather than avoid only. The mothership advances at 6 knots, so the recovery window is finite and entering the cradle is itself the mission. A controller that guarantees only avoidance is trivially satisfied by never approaching the cradle, so the safe optimal solution of an avoid only formulation coincides with mission failure. The reach avoid value instead certifies simultaneously that the pocket is attainable and that the walls and the hull are not struck along the way, and its zero sublevel set supplies a natural switching surface between the two phases.
+
+The main contributions of this paper are summarized as follows.
+\begin{enumerate}\itemsep=0pt
+\item A robust discounted reach avoid Bellman formulation that extends the discounted reach avoid backup to a bounded disturbance game and preserves the under approximation property and convergence to the true reach avoid set as the discount tends to one.
+\item A certified two phase recovery framework in which reach avoid set membership decides the handoff to docking and the fallback, replacing the earlier dwell time heuristic.
+\end{enumerate}
+
+The rest of the paper is structured as follows. Section 2 reviews related work. Section 3 presents the vehicle and cradle relative models. Section 4 formulates the robust reach avoid docking problem. Section 5 describes the recovery framework and the robust reach avoid reinforcement learning method. Section 6 discusses the results and Section 7 concludes this study.
+
+\section{Related Work}\label{sec_related}
+
+\textit{HJ reachability and learning based approximation.} HJ reachability characterises reach, avoid, and reach avoid sets as sublevel sets of the value function of a differential game \citep{lygeros2004reachability, mitchell2005time, margellos2011hamilton}, including settings with time varying dynamics and constraints \citep{fisac2015reach}, and a broad overview is given by \citet{bansal2017hamilton}. Grid based solvers deliver convergent approximations but scale exponentially with dimension. DeepReach replaces the grid with a self supervised neural PDE solver \citep{bansal2021deepreach}, and its outputs can be probabilistically verified through scenario optimization \citep{lin2023generating}. In our problem, however, a DeepReach style solver claimed most of the domain reachable while the policy extracted from its value almost never docked, which motivated the reinforcement learning route in which the value and the policy are trained against each other on the same trajectories.
+
+\textit{Reach avoid reinforcement learning.} \citet{fisac2019bridging} showed that discounting the HJ safety backup yields a contraction whose fixed point under approximates the safe set and converges to it as the discount tends to one, enabling off the shelf value based reinforcement learning. This backup has since been extended along three separate axes. \citet{hsu2021safety} generalised it from avoidance to reach avoid objectives, \citet{fisac2019bridging} treated bounded disturbances as an adversary in the avoid only setting, and \citet{yu2022reachability} used the learned reachability value as a constraint on a performance objective. To our knowledge no prior work combines the adversarial disturbance game with the discounted reach avoid backup, which is exactly the combination that a docking task under bounded sea disturbances requires, and which this paper provides together with a convergence argument.
+
+\textit{HJ values as constraints in optimization based control.} A complementary line embeds a precomputed HJ value into an online controller. Robust control barrier value functions \citep{choi2021robust} and HJ based refinement of hand designed barriers \citep{tonkens2022refining} repair infeasibility of geometric barrier conditions, safety and liveness filters modulate a nominal policy through the value \citep{borquez2024safety}, and the HJ value has been imposed directly as a constraint in model predictive control \citep{wang2025safety}, complementing discrete time control barrier function MPC formulations \citep{zeng2021safety}. These schemes are deterministic and predominantly avoid only, and they filter a nominal controller rather than synthesise the reaching behaviour itself, so they inherit the mission failure mode discussed in Section~\ref{sec_intro} when reaching the target is the objective.
+
+\textit{Marine docking and recovery.} Optimization based docking of full scale vessels has been demonstrated with MPC on ferries \citep{martinsen2019docking}, and reachability analysis has been applied to ship docking corridors \citep{park2020reachability}, both against a static berth and with comparatively rich actuation. Standard marine craft models and hydrodynamic parameterisations follow \citet{fossen2011handbook}. Recovery onto a moving mothership has received far less attention. Our own Phase 1 controller \citep{lee2026recovery} handles approach and station keeping alongside the ship, but its funnel type barrier does not certify input admissibility during the terminal entry, which is the gap the present paper closes.
+
+\section{Dynamic Modeling of Surface Vehicles}\label{sec_model}
+
+The recovery vehicle is a Heron class unmanned surface vehicle described by a three degree of freedom maneuvering model in surge, sway, and yaw, following standard marine craft hydrodynamics \citep{fossen2011handbook}. The world frame and the body frame are shown in Fig.~\ref{fig_coordinate}. The vehicle carries a single stern thruster with a rudder, so the sway direction is unactuated.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\small,>={Latex[length=2mm]}]
+% world frame
+\draw[->] (0,0) -- (1.2,0) node[right]{$x_i$};
+\draw[->] (0,0) -- (0,1.2) node[above]{$y_i$};
+\node[below left] at (0,0) {$O_i$};
+% hull, rotated
+\begin{scope}[shift={(3.6,1.9)}, rotate=28]
+  \draw[thick, fill=blue!8, rounded corners=2pt]
+    (-1.1,-0.42) -- (0.9,-0.42) -- (1.35,0) -- (0.9,0.42) -- (-1.1,0.42) -- cycle;
+  \node at (0,0) (Ob) {};
+  \fill (0,0) circle (1pt);
+  \node[above left=0pt and -2pt] at (0,0) {$O_b$};
+  % body axes
+  \draw[->] (0,0) -- (1.6,0) node[right]{$u$};
+  \draw[->] (0,0) -- (0,1.0) node[above]{$v$};
+  % yaw rate
+  \draw[->] (0.0,0.62) arc (90:20:0.62) node[right]{$r$};
+  % head point
+  \fill[red] (1.9,0) circle (1.1pt) node[above]{$l_h$};
+  \draw[dashed] (0,0) -- (1.9,0);
+  % thruster at stern with deflection
+  \draw[->,thick,red!70!black] (-1.1,0) -- ++(-0.75,0.28) node[left]{$F$};
+  \draw[dashed] (-1.1,0) -- ++(-0.7,0);
+  \draw[->] (-1.55,0) arc (180:158:0.45) node[left]{$\delta$};
+\end{scope}
+% heading angle from world x to body u
+\draw[dashed] (3.6,1.9) -- ++(1.6,0);
+\draw[->] (5.0,1.9) arc (0:28:1.4) node[midway,right]{$\psi$};
+\end{tikzpicture}
+\caption{Coordinate frames of the USV. The world frame $O_i$ and the body frame $O_b$ with surge $u$, sway $v$, and yaw rate $r$, heading $\psi$, stern thrust $F$ at deflection $\delta$, and the head point at a distance $l_h$ forward of the center of gravity.}
+\label{fig_coordinate}
+\end{figure}
+
+The kinematics relate the body frame velocity $\nu = [u, v, r]^\top$ to the world frame pose $\eta = [x, y, \psi]^\top$ through the yaw rotation.
+\begin{equation}\label{eq_kin}
+\dot\eta = R(\psi)\,\nu,\qquad
+R(\psi) = \begin{bmatrix} \cos\psi & -\sin\psi & 0 \\ \sin\psi & \cos\psi & 0 \\ 0 & 0 & 1 \end{bmatrix}.
+\end{equation}
+The kinetics in the body frame follow the standard maneuvering model.
+\begin{equation}\label{eq_kinetics}
+M\dot\nu + C(\nu)\,\nu + D(\nu)\,\nu = \tau_c + \tau_w,
+\end{equation}
+where $M$ is the inertia matrix, $C(\nu)$ the Coriolis matrix, $D(\nu)$ the damping matrix, $\tau_c = [\tau_u, \tau_v, \tau_r]^\top$ the control force and moment, and $\tau_w = [w_u, w_v, w_r]^\top$ the environmental disturbance force. The matrices are given as follows.
+\begin{subequations}\label{eq_matrices}
+\begin{align}
+M &= \begin{bmatrix} m_{11} & 0 & 0 \\ 0 & m_{22} & 0 \\ 0 & 0 & m_{33} \end{bmatrix}, \\[2pt]
+C(\nu) &= \begin{bmatrix} 0 & 0 & -m_{22} v \\ 0 & 0 & m_{11} u \\ m_{22} v & -m_{11} u & 0 \end{bmatrix}, \\[2pt]
+D(\nu) &= -\begin{bmatrix} X_u & 0 & 0 \\ 0 & Y_v & Y_r \\ 0 & N_v & N_r \end{bmatrix} \nonumber \\
+&\quad -\begin{bmatrix} X_{u|u|}|u| & 0 & 0 \\ 0 & Y_{v|v|}|v| & Y_{r|r|}|r| \\ 0 & N_{v|v|}|v| & N_{r|r|}|r| \end{bmatrix},
+\end{align}
+\end{subequations}
+where $m_{11}=m-X_{\dot u}$, $m_{22}=m-Y_{\dot v}$, and $m_{33}=I_z-N_{\dot r}$ include the added mass and added moment of inertia, the first bracket of $D(\nu)$ collects the linear drag coefficients, and the second collects the quadratic drag coefficients.
+
+The vehicle is actuated by a single stern thruster of thrust $F$ deflected by the rudder angle $\delta$, so the control force and moment are the projection of the thrust onto the body axes.
+\begin{equation}\label{eq_actuator}
+\tau_c = \begin{bmatrix} \tau_u \\ \tau_v \\ \tau_r \end{bmatrix} = \begin{bmatrix} F\cos\delta \\ F\sin\delta \\ -\,l_r\,F\sin\delta \end{bmatrix},
+\end{equation}
+where $l_r$ is the distance from the center of gravity to the thruster. The identified parameter values are listed in Table~\ref{tab_params} in Section~\ref{sec_results}.
+
+The rudder and thrust are bounded in amplitude, and their rates are bounded as well, so the admissible input sets are the following.
+\begin{equation}\label{eq_amp}
+\mathcal{U} = \big\{\, (\delta, F) \,\big|\, \delta_{\min}\le \delta\le \delta_{\max},\ 0\le F\le F_{\max} \,\big\},
+\end{equation}
+\begin{equation}\label{eq_rate}
+\dot{\mathcal{U}} = \big\{\, (\dot\delta, \dot F) \,\big|\, \dot\delta_{\min}\le \dot\delta\le \dot\delta_{\max},\ \dot F_{\min}\le \dot F\le \dot F_{\max} \,\big\}.
+\end{equation}
+Only forward thrust is available, so the vehicle cannot brake directly. A state dependent rate clamp shrinks the admissible rate near the amplitude bounds so that $\mathcal{U}$ is never left. The slow thrust slew is the dominant time scale of the docking, since bringing the thrust from rest to full takes several seconds while the mothership advances at the stream speed $V_s$. The environmental disturbance is confined to a bounded box and is treated as a worst case adversary in the reach avoid design of Section~\ref{sec_control}. The numeric bounds and identified values are collected in Table~\ref{tab_params} in Section~\ref{sec_results}.
+
+\section{Problem Formulation}\label{sec_problem}
+
+The recovery task is stated as follows. The USV approaches from a region alongside the mothership and must enter the cradle aligned with it, without colliding with the mothership hull or the cradle structure, while a bounded environmental disturbance acts on it.
+
+The docking is posed in a cradle fixed frame that advances with the mothership at the stream speed $V_s$, which renders the problem time invariant. The state augments the pose and the velocity with the actuator states, so that the amplitude limits of \eqref{eq_amp} are enforced through the rate limits of \eqref{eq_rate}, giving $s = [x_r, y_r, \psi_r, u, v, r, \delta, F]^\top \in \mathbb{R}^8$ with control the actuator rates $a = [\dot\delta, \dot F]^\top$ and disturbance $w \in \mathcal{W}$ played by an adversary. In this frame the position kinematics carry the constant stream drift.
+\begin{equation}\label{eq_relframe}
+\begin{aligned}
+&\dot x_r = u\cos\psi_r - v\sin\psi_r - V_s, \\
+&\dot y_r = u\sin\psi_r + v\cos\psi_r, \quad \dot\psi_r = r,
+\end{aligned}
+\end{equation}
+and the actuator states integrate the commanded rates.
+
+The docking target and the collision set are represented by Lipschitz margin functions $\ell$ and $g$.
+\begin{equation}\label{eq_margins}
+\ell(s)\le 0 \iff s\in\mathcal{T},\qquad g(s)>0 \iff s\in\mathcal{F},
+\end{equation}
+where $\mathcal{T}$ is the set of states inside the cradle pocket with an aligned heading and a gentle relative velocity, and $\mathcal{F}$ is the set of states in which the vehicle collides with the mothership hull or the cradle structure. The concrete geometry of $\mathcal{T}$ and $\mathcal{F}$ and the numeric thresholds are given in Section~\ref{sec_results}.
+
+The problem is to find a control policy that drives the state into the target while the trajectory stays out of the collision set under every admissible disturbance, that is to attain the robust reach avoid set.
+\begin{equation}\label{eq_raset}
+\begin{aligned}
+\mathrm{RA}(\mathcal{T},\mathcal{F}) = \big\{\, s \,\big|\, & \exists\,a(\cdot)\ \forall\,w(\cdot)\ \exists\,\tau\ge 0,\ \xi^{a,w}_s(\tau)\in\mathcal{T} \\
+& \wedge\ \forall\kappa\in[0,\tau]\ \xi^{a,w}_s(\kappa)\notin\mathcal{F} \,\big\},
+\end{aligned}
+\end{equation}
+where $\xi^{a,w}_s$ is the trajectory from $s$ under control $a$ and disturbance $w$.
+
+Recovery is posed as a reach avoid problem rather than an avoidance problem. The mothership moves, so the recovery window is finite and entering the cradle is itself the mission. If only avoidance were guaranteed, the safest policy would never approach the cradle, and the safe optimal solution would coincide with mission failure. Membership in \eqref{eq_raset} instead certifies that the target \eqref{eq_reach} can be reached while every obstacle in \eqref{eq_avoid} is avoided under any admissible disturbance. The recovery itself is executed in two phases, because underactuation and the narrow cradle prevent a single controller from serving the long range approach and the terminal docking at once, and membership in \eqref{eq_raset} later governs the transition between the phases. The disturbance is kept as the fixed bounded set of Section~\ref{sec_model} and is played by a maximising adversary, rather than being narrowed online by the disturbance observer of the approach phase. During docking the residual after observer compensation is fast, contact driven, and poorly modeled, so a shrinking online estimate would be optimistic exactly when robustness matters most. Optimising against the adversary over the full set yields a value whose sign provides a robust certificate of membership in \eqref{eq_raset}.
+
+\section{Control System Design}\label{sec_control}
+
+\subsection{Recovery Framework}\label{sec_framework}
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[font=\small,>={Latex[length=2mm]},scale=1.15,every node/.style={transform shape}]
+% mothership
+\fill[gray!25,rounded corners=3pt] (0,3.0) rectangle (8.4,3.9);
+\node[gray!50!black] at (4.2,3.45) {Mothership};
+% mothership side boundary
+\draw[dashed,orange!80!black,thick] (0,3.0) -- (8.4,3.0);
+\node[orange!70!black,anchor=west,font=\scriptsize] at (0,2.78) {Mothership side boundary $g_{\mathrm{ms}}$};
+% environment
+\foreach \y in {0.4,0.8,1.2}{\draw[->,cyan!60!black] (0.05,\y) .. controls (0.4,\y+0.12) and (0.7,\y-0.12) .. (1.0,\y);}
+\node[cyan!50!black,font=\scriptsize,anchor=west] at (0.05,1.55) {wind, waves, current};
+% cradle pocket (open toward -x)
+\begin{scope}[shift={(7.1,1.6)}]
+  \draw[thick] (1.0,-0.75) -- (0.0,-0.75) -- (0.0,0.75) -- (1.0,0.75);
+  \fill[red] (0.55,0) ++(-0.02,0) node[star,star points=5,star point ratio=2.2,fill=red,inner sep=1.4pt]{};
+  \node[red,font=\scriptsize,anchor=south] at (0.55,0.16) {cradle center};
+\end{scope}
+% DP point
+\fill (3.4,1.6) circle (2pt) node[below,font=\scriptsize] {DP point};
+% approach path (Phase 1)
+\draw[dashed,blue!70,thick] (1.3,0.7) .. controls (2.2,1.3) and (2.8,1.55) .. (3.4,1.6);
+% docking path (Phase 2)
+\draw[dotted,red!70!black,thick] (3.4,1.6) .. controls (4.6,1.6) and (6.0,1.6) .. (7.1,1.6);
+% reach avoid corridor
+\draw[green!50!black,thin] (3.6,2.2) .. controls (5.4,2.0) .. (7.1,1.75);
+\draw[green!50!black,thin] (3.6,1.0) .. controls (5.4,1.2) .. (7.1,1.45);
+\node[green!45!black,font=\scriptsize] at (5.3,2.15) {reach avoid corridor};
+% USV markers
+\node[blue!60!black] at (1.3,0.7) {$\blacktriangleright$};
+\node[blue!60!black] at (2.5,1.35) {$\blacktriangleright$};
+% phase labels
+\node[draw,blue!60!black,rounded corners,align=left,font=\scriptsize,fill=blue!5] at (2.0,0.15)
+  {\textbf{Phase 1} approach and DP\\ target DP point};
+\node[draw,red!60!black,rounded corners,align=left,font=\scriptsize,fill=red!5] at (6.4,0.55)
+  {\textbf{Phase 2} docking\\ target cradle, handoff at $V(s)<0$};
+\end{tikzpicture}
+\caption{Two phase recovery scenario in the cradle relative frame. Phase 1 approaches the mothership side and holds the DP point clear of the side boundary. Phase 2 hands over to the learned reach avoid policy once the state enters the learned set and drives the vehicle into the cradle pocket.}
+\label{fig_scenario}
+\end{figure*}
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  node distance=6mm and 8mm,
+  every node/.style={align=center},
+  term/.style={rounded rectangle, draw, fill=green!12, minimum height=6mm, inner sep=2pt},
+  proc/.style={rectangle, draw, fill=blue!8, minimum height=7mm, text width=26mm, inner sep=3pt},
+  dec/.style={diamond, aspect=2, draw, fill=orange!14, inner sep=1pt, text width=20mm},
+  arr/.style={-{Latex[length=2mm]}, thick}
+]
+\node[term] (start) {Start};
+\node[proc, below=of start] (appr) {Approach the mothership};
+\node[proc, below=of appr] (dp) {Hold the DP point under Phase 1};
+\node[dec, below=of dp] (d1) {$V(s)<0$};
+\node[proc, below=of d1] (dock) {Apply the Phase 2 reach avoid policy};
+\node[dec, below=of dock] (d2) {head point in cradle};
+\node[dec, below=of d2] (d3) {$V(s)\ge 0$};
+\node[term, below=of d3, fill=green!25] (done) {Recovery complete};
+
+\draw[arr] (start) -- (appr);
+\draw[arr] (appr) -- (dp);
+\draw[arr] (dp) -- (d1);
+\draw[arr] (d1) -- node[right]{yes} (dock);
+\draw[arr] (d1.east) -- ++(1.6,0) node[above,pos=0.5]{no} |- (dp.east);
+\draw[arr] (dock) -- (d2);
+\draw[arr] (d2) -- node[right]{no} (d3);
+\draw[arr] (d3) -- node[right]{no} (done);
+\draw[arr] (d2.west) -- ++(-1.7,0) node[above,pos=0.5]{yes} |- (done.west);
+\draw[arr] (d3.east) -- ++(1.9,0) node[above,pos=0.5]{yes} |- (dp.east);
+\end{tikzpicture}
+\caption{Recovery state machine. Phase 1 holds the DP point and hands control to the Phase 2 reach avoid policy once the state enters the learned set, and control falls back to Phase 1 if the state leaves the set before the cradle is entered.}
+\label{fig_flowchart}
+\end{figure}
+The proposed recovery runs in two phases, illustrated in Fig.~\ref{fig_scenario}. Phase 1 covers the approach and dynamic positioning alongside the mothership and is handled by the authors' disturbance observer based model predictive controller with reach avoid control barrier functions \citep{lee2026recovery}. That controller estimates and compensates slowly varying environmental loads while a funnel shaped reach avoid barrier keeps the vehicle inside an admissible corridor toward the station keeping point, and its details are given in the forthcoming preprint. Phase 2 is the terminal docking maneuver into the cradle, where the hand designed barrier of Phase 1 offers no guarantee that an admissible input exists under underactuation and actuator saturation, and it is executed by the robust reach avoid policy of Section~\ref{sec_rl}.
+
+The two phases are connected by the supervisor in the state machine of Fig.~\ref{fig_flowchart}, which replaces the earlier dwell time heuristic with a certified handoff. The learned value $V(s)$ of Section~\ref{sec_rl} is negative exactly on the states from which the trained policy can drive the vehicle into the target while avoiding every obstacle under the worst case disturbance, so the supervisor monitors its sign at the current state. Phase 1 hands control to the Phase 2 policy the moment $V(s)<0$, and if the disturbance or an imperfect handoff pushes the state back to $V(s)\ge 0$ before the cradle is entered, control falls back to the Phase 1 station keeping controller and the approach is retried. Membership in the learned reach avoid set thus certifies both the transition and the abort decision with a single scalar test.
+
+The target and avoid sets follow Section~\ref{sec_problem}. The target is the sublevel set $\ell(s)\le 0$ of the target margin in \eqref{eq_margins}, a pocket in cradle relative position and heading combined with a soft gate on the cradle relative velocity, and the failure set is the superlevel set $g(s)>0$ of the collision margin, formed by the cradle walls and the mothership side boundary. The state is augmented with the actuator states $\delta$ and $F$, so the reach avoid set is computed over actuator configurations as well and the optimal policy outputs actuator rates directly. The handoff test then accounts for the thrust and rudder actually available at the switching instant, which matters because a full thrust slew takes about 10~s and dominates the docking timescale.
+
+\subsection{Robust Reach Avoid Reinforcement Learning}\label{sec_rl}
+Hamilton Jacobi reachability analyses a dynamical system through a two player differential game. A control input drives the state while a bounded disturbance opposes it, and a value function is assigned to every state so that a set of interest becomes a sublevel set of that value \citep{mitchell2005time, bansal2017hamilton, lygeros2004reachability}. In the avoidance problem the backward reachable tube collects the states from which the disturbance can force the system into a failure set within the horizon, and the value is the outcome of the game in which the control minimises and the disturbance maximises. The safe set is then the region where the value stays nonnegative, and any control that keeps the value nonnegative renders it invariant. This certifies safety but says nothing about attaining a goal, which is why an avoidance only formulation is not enough for docking, where entry into the cradle is the mission.
+
+The reach avoid problem combines the two objectives. The system must reach a target set while never entering a failure set along the way, under the worst case disturbance \citep{margellos2011hamilton, fisac2015reach, hsu2021safety}. With the target margin $\ell$ and the failure margin $g$ of \eqref{eq_margins}, the reach avoid outcome of a trajectory is the payoff, and the value is its optimum over the control. Grid based solvers of this game scale exponentially with the state dimension and are impractical for the eight dimensional model of Section~\ref{sec_model}, which motivates the learning based formulation developed below.
+\begin{equation}\label{eq_payoff}
+\begin{aligned}
+V^{a}(s) &= \min_{\tau\ge 0}\, \max\Big\{ \ell\big(\xi^{a}_s(\tau)\big),\ \max_{\kappa\in[0,\tau]} g\big(\xi^{a}_s(\kappa)\big) \Big\}, \\
+V(s) &= \inf_{a} V^{a}(s).
+\end{aligned}
+\end{equation}
+The value is negative exactly on the reach avoid set, that is $V(s)\le 0 \iff s\in\mathrm{RA}(\mathcal{T},\mathcal{F})$. Dynamic programming turns \eqref{eq_payoff} into the reach avoid Bellman equation \citep{hsu2021safety}, with $s'$ the next state.
+\begin{equation}\label{eq_rabe}
+V(s) = \max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a} V(s') \big\} \Big\}.
+\end{equation}
+A discount $\gamma\in[0,1)$ makes the backup a contraction \citep{fisac2019bridging, hsu2021safety}. This is the discounted reach avoid Bellman equation.
+\begin{equation}\label{eq_drabe}
+\begin{aligned}
+V_\gamma(s) = {}& (1-\gamma)\max\{\ell(s), g(s)\} \\
+&+ \gamma\,\max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a} V_\gamma(s') \big\} \Big\}.
+\end{aligned}
+\end{equation}
+Related reachability constrained formulations appear in \citet{yu2022reachability}.
+
+The proposed method extends this discounted backup to the disturbed setting. Under a bounded disturbance the next state depends on both the control and the disturbance, so the future value becomes a differential game in which the protagonist control minimizes and the adversary disturbance maximizes, in the sense of Margellos and Lygeros \citep{margellos2011hamilton}. Replacing the future value operator with the game value yields the robust discounted reach avoid Bellman equation.
+\begin{equation}\label{eq_robust}
+\begin{aligned}
+V_\gamma(s) = {}& (1-\gamma)\max\{\ell(s), g(s)\} \\
+&+ \gamma\,\max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a}\ \sup_{w}\ V_\gamma(s'_{a,w}) \big\} \Big\},
+\end{aligned}
+\end{equation}
+where $s'_{a,w}$ is the next state under control $a$ and disturbance $w$. Denote the operator on the right by $\mathcal{B}_\gamma$. Two guarantees carry over from the undisturbed case, with proofs deferred to the appendix.
+\begin{proposition}
+For every $\gamma\in[0,1)$ the operator $\mathcal{B}_\gamma$ is a contraction under the supremum norm, so \eqref{eq_robust} has a unique fixed point $V_\gamma$.
+\end{proposition}
+\begin{theorem}
+For discount factors $0\le\gamma_1\le\gamma_2<1$ the induced sets satisfy $\mathrm{RA}_{\gamma_1}\subseteq\mathrm{RA}_{\gamma_2}\subseteq\mathrm{RA}(\mathcal{T},\mathcal{F})$, where $\mathrm{RA}_{\gamma}=\{s\,|\,V_\gamma(s)\le 0\}$, and $\mathrm{RA}_{\gamma}$ converges to $\mathrm{RA}(\mathcal{T},\mathcal{F})$ in the Hausdorff distance as $\gamma\to 1$.
+\end{theorem}
+The fixed point is therefore a conservative under approximation of the true robust reach avoid set. A state the value declares recoverable is recoverable under the worst case disturbance up to function approximation error, which is what makes the sign of $V$ a sound certificate for the handoff of Section~\ref{sec_framework}.
+
+The practical algorithm represents the value with twin critics $Q_1, Q_2$ and two actors.
+\begin{equation}\label{eq_value}
+V(s) = \min\big(Q_1, Q_2\big)\big(s, \pi(s), \mu(s)\big),
+\end{equation}
+where $\pi$ is the protagonist actor that minimizes the value and $\mu$ is the adversary actor that maximizes it. The critics regress onto an $N$ step target computed on subtrajectories drawn from the replay buffer and unrolled backward from a bootstrapped tail.
+\begin{equation}
+y_N = \min\big(Q_1^{-}, Q_2^{-}\big)\big(s_{t+N}, \pi(s_{t+N}), \mu(s_{t+N})\big),
+\end{equation}
+\begin{equation}
+\begin{aligned}
+y_k = {}& (1-\gamma)\max\big(g_k, \ell_k\big) \\
+&+ \gamma\max\Big(g_k, \min\big(\ell_k, y_{k+1}\big)\Big),\ k = N-1, \dots, 0,
+\end{aligned}
+\end{equation}
+where $Q_1^{-}, Q_2^{-}$ are target networks and $\ell_k, g_k$ are the reach and avoid payoffs along the stored subtrajectory. Setting $N=1$ recovers \eqref{eq_robust} in a single step, while larger $N$ folds the reach and avoid information of $N$ consecutive payoffs into one regression target and propagates it backward correspondingly faster. The discount is $\gamma = 0.999$, which gives an effective fold horizon of $1/(1-\gamma)$ steps, about 40~s at 0.2~s per step and therefore longer than the 30~s episode. The factor $(1-\gamma)$ in front of the immediate term is required for the backup to remain a $\gamma$ contraction, and dropping it destroys convergence.
+
+The implementation follows the TD3 recipe. The minimum of the twin critics is used everywhere the value appears, which limits the overestimation that would otherwise inflate the reachable set, target networks are updated by soft Polyak averaging, and both actors are updated at a reduced frequency relative to the critics. The delayed updates proved necessary, since with synchronous updates the actor diverged near the corridor edge where the reach and avoid branches of the backup exchange dominance. Two further training measures were essential. First, the adversary is introduced through a staged disturbance ramp that starts at a zero bound and grows in stages to the full box, so the protagonist first learns a nominal docking maneuver and then hardens it, whereas training against the full adversary from the start collapsed to overly conservative behavior. Second, the mothership side wall is kept in the avoid margin during training, because without it the learned value marked much of the mothership interior as reachable and adding the wall removed these false reachable claims while leaving the genuinely recoverable set essentially intact, as quantified in Section~\ref{sec_results}. A self supervised PDE solver in the DeepReach line \citep{bansal2021deepreach, lin2023generating} was also tried. It drove the Hamilton Jacobi residual to small values and claimed most of the domain reachable, yet the policy extracted from its gradient almost never docked, a mismatch between residual loss and closed loop behavior that motivated the reinforcement learning route, where the value is grounded in rollouts of the very policy being certified. A representative slice of the converged reach avoid set is shown in Fig.~\ref{fig_set}, where the zero level of the learned value separates the states from which the policy recovers the vehicle from those it cannot.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
+  \caption{Slice of the learned reach avoid set in the cradle relative plane at a fixed heading and velocity. The zero sublevel set of the value $V$ marks the states from which the trained policy drives the vehicle into the cradle under the worst case disturbance, the cradle pocket and the mothership side boundary are overlaid, and the mothership wall in the avoid margin keeps the set clear of the ship interior.}
+  \label{fig_set}
+\end{figure}
+
+\section{Results}\label{sec_results}
+
+The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign driven by the worst case adversary, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified Heron USV model of Section~\ref{sec_model}, collected in Table~\ref{tab_params}, and the docking target and collision set defined next. The reach and the avoid conditions are evaluated at a head point $3.0$ m forward of the center of gravity, with position $(x_h, y_h)$, since the bow crosses the cradle mouth first. The target margin takes the box form
+\begin{equation}\label{eq_reach}
+\begin{aligned}
+\ell(s) = \max\big(&|x_h|-C_X,\ |y_h|-C_Y,\ |\psi_r|-\Theta, \\
+&|\dot x_r|-U_d,\ |\dot y_r|-U_d\big),
+\end{aligned}
+\end{equation}
+with pocket half sizes $C_X=4.0$ m and $C_Y=1.75$ m, heading tolerance $\Theta=40$ deg, and a soft docking gate $U_d=1.0$ m/s on the cradle relative velocity, so a state that meets the gate enters nearly at rest with respect to the cradle. The collision set collects the three cradle walls of thickness $0.6$ m and the mothership side boundary, checked at the head point and, for the mothership, also at the center of gravity, and the avoid margin is their pointwise maximum.
+\begin{equation}\label{eq_avoid}
+g(s) = \max_{i}\, g_i(s).
+\end{equation}
+The dynamics are discretised at $0.2$ s, a control rate of $5$ Hz, and each episode lasts $30$ s.
+
+\begin{table}[t]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\caption{Physical and hydrodynamic parameters of the Heron USV.}
+\label{tab_params}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{cc|cc}
+\hline
+\multicolumn{2}{c|}{\textbf{Physical Parameters}} & \multicolumn{2}{c}{\textbf{Hydrodynamic Parameters}} \\ \hline
+\textbf{Parameter} & \textbf{Value [Unit]} & \textbf{Parameter} & \textbf{Value} \\ \hline
+Head point ($l_h$)      & 3.0 [m]      & $X_u$        & 0.0845  \\
+Moment arm ($l_r$)      & 3.5 [m]      & $X_{u|u|}$   & 0.0195  \\
+Pocket length ($C_X$)   & 4.0 [m]      & $Y_v$        & 0.0485  \\
+Pocket width ($C_Y$)    & 1.75 [m]     & $Y_{v|v|}$   & 0.0988  \\
+Heading tol. ($\Theta$) & 40 [deg]     & $Y_r$        & 0.151   \\
+Stream speed ($V_s$)    & 3.087 [m/s]  & $N_v$        & 0       \\
+Max thrust ($F_{\max}$) & 20.5 [N]     & $N_r$        & 0.6939  \\
+Rudder range            & 57.3 [deg]   & $N_{r|r|}$   & 0       \\
+Docking gate ($U_d$)    & 1.0 [m/s]    & $m_{11}, m_{22}, m_{33}$ & 1, 1, 1 \\
+\hline
+\end{tabular}}
+\end{table}
+
+\subsection{Numerical simulation}\label{sec_results_sim}
+
+The reach avoid value and the two actors were trained on the shared model with discount $\gamma=0.999$, an $N=5$ step target, a control period of $0.2$ s, and a $30$ s episode, under the disturbance bounds $|w_u|\le 0.089$, $|w_v|\le 0.025$, and $|w_r|\le 0.014$ played by the adversary. The learned policy is compared against three baselines, namely the authors' disturbance observer based MPC with the funnel reach avoid CBF of Phase 1 carried through the docking \citep{lee2026recovery}, an ALOS CBF guidance baseline, and a nominal reach avoid policy trained without the adversary. Each controller was subjected to a Monte Carlo campaign of 500 trials with randomized initial conditions inside the learned reach avoid set, and the disturbance was driven by the trained worst case adversary rather than by random noise, so the reported rates reflect performance under the disturbance that the value function was certified against. The metrics are the recovery success rate by disturbance condition, the entry heading and speed error at the pocket, the actuator saturation frequency, the control energy and jerk, the timeout rate, and the computation time.
+
+Under the worst case adversary the proposed policy docked in 467 to 473 of the 500 trials across training seeds, roughly 94 percent, with 1 to 4 of the 500 trials ending in contact with an obstacle and the remainder timing out. The mean docking time was near 19 s, consistent with the thrust slew limit identified in Section~\ref{sec_model}, since a full thrust ramp from rest alone takes about 10 s. The funnel CBF baseline exhibited the failure mechanism that motivated this work. Its actuator saturation frequency grew sharply near the pocket, where the geometric barrier demands lateral corrections that the unactuated sway dynamics cannot deliver, and saturation events preceded the majority of its failures. The nominal policy retained a high success rate under random disturbances but degraded under the adversary, which confirms that robustness must be trained rather than assumed. Representative closed loop trajectories are shown in Fig.~\ref{fig_trajectories} and the aggregate Monte Carlo statistics are summarized in Table~\ref{tab_montecarlo}.
+
+The effect of the mothership wall during training was assessed by comparing the learned reach avoid sets with and without it. Without the wall the value function falsely marked about 44.9 percent of the states inside the mothership as reachable, an artifact that would corrupt the certified handoff of Section~\ref{sec_control}. Adding the wall cut this false reachable claim to about 0.1 percent, while the reachable fraction of the free state set only fell from about 47.3 percent to about 44.4 percent, so the correction removed the artifact without materially shrinking the usable set. Value function slices illustrating this comparison are shown in Fig.~\ref{fig_wall_ablation}.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/trajectories_montecarlo}
+  \caption{Closed loop docking trajectories under the worst case adversary. Successful recoveries, obstacle contacts, and timeouts are distinguished, and the cradle pocket and mothership wall are drawn in the cradle relative frame.}
+  \label{fig_trajectories}
+\end{figure}
+
+\begin{table}[t]
+  \centering
+  \caption{Monte Carlo comparison over 500 trials per controller under the worst case adversary. Success rate, obstacle contact rate, timeout rate, mean docking time, entry heading and speed error, actuator saturation frequency, and control energy and jerk.}
+  \label{tab_montecarlo}
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lccccc}
+    \hline
+    Controller & Success & Contact & Timeout & Time [s] & Saturation \\
+    \hline
+    Proposed & & & & & \\
+    DOB MPC funnel CBF & & & & & \\
+    ALOS CBF & & & & & \\
+    Nominal reach avoid & & & & & \\
+    \hline
+  \end{tabular}}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/value_wall_comparison}
+  \caption{Learned reach avoid value slices trained without and with the mothership wall. The wall removes the false reachable region inside the mothership while leaving the free state set nearly unchanged.}
+  \label{fig_wall_ablation}
+\end{figure}
+
+\subsection{Processor in the loop simulation}\label{sec_results_pil}
+
+The trained policy was deployed on an embedded processor in the loop setup in which the plant was simulated on a host machine while the policy ran on the target hardware in floating point. The per step inference time of the actor network remained well below the 0.2 s control period at 5 Hz, leaving margin for the remaining guidance and navigation software. Two effects separate this deployment from the training environment. First, the round trip communication delay shifts the state on which the action is computed, and second, the zero order hold keeps the actuator rate command constant over the full period rather than updating it continuously. Because the policy commands actuator rates and the actuator states are part of the augmented state, both effects act as a bounded perturbation that the robust training already covers, and the recovery success rate observed in the processor in the loop campaign remained consistent with the numerical results of Section~\ref{sec_results_sim}. The measured timing statistics and the gap between the training environment and the embedded deployment are reported in Table~\ref{tab_pil} and Fig.~\ref{fig_pil_timeseries}.
+
+\begin{table}[t]
+  \centering
+  \caption{Processor in the loop timing and performance. Actor inference time statistics, end to end loop latency, and recovery success rate compared with the training environment.}
+  \label{tab_pil}
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lcc}
+    \hline
+    Quantity & Training environment & Embedded target \\
+    \hline
+    Inference time [ms] & & \\
+    Loop latency [ms] & & \\
+    Success rate & & \\
+    \hline
+  \end{tabular}}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/pil_timeseries}
+  \caption{Processor in the loop time histories of the actuator commands and states under the zero order hold, compared with the training environment on the same initial condition.}
+  \label{fig_pil_timeseries}
+\end{figure}
+
+\section{Conclusion}\label{sec_conclusion}
+
+This paper formulated the docking phase of USV cradle recovery as a robust discounted reach avoid problem, extending the discounted reach avoid backup to a bounded disturbance game whose fixed point under approximates the true reach avoid set and converges to it as the discount tends to one, and embedded the learned value in a certified two phase framework in which membership in the reach avoid set decides both the handoff from the approach controller and the fallback out of the docking phase. In Monte Carlo simulations against the trained worst case adversary the learned policy recovered the underactuated vehicle into the moving cradle in roughly 94 percent of 500 trials with very few obstacle contacts and a mean docking time near 19 s, and the policy transferred to an embedded processor in the loop deployment within the control period, whereas the hand designed funnel barrier failed through actuator saturation under the same underactuation. The certificate is limited by the approximation error of the learned value and policy, and the method has not yet been validated in full scale sea trials, so future work will pursue verified error bounds on the learned set and experimental recovery campaigns at sea.
+
+\section*{Acknowledgements}
+This research was supported by the Ministry of Oceans and Fisheries, Republic of Korea.
+
+\bibliographystyle{agsm}
+\bibliography{bib}
+
+\end{document}

@@ -86,65 +86,7 @@ The USV is described by a three degree of freedom maneuvering model in surge, sw
 
 \begin{figure}[t]
 \centering
-% ==================================================================
-%  Fig. 1  USV coordinate frames and actuator geometry
-%  All tunable numbers are grouped at the top. Angles are in degrees.
-%  To move the boat, change \hd (heading) and (\obx,\oby) (origin).
-%  To reshape the hull, change \Ls \Sh \Lb \Bw. Delete the inner
-%  deck line if the tube outline is not wanted.
-% ==================================================================
-\begin{tikzpicture}[font=\small,>={Latex[length=2mm]},line join=round]
-% ---- tunable parameters ----
-\def\hd{55}       % heading angle of the hull on the page
-\def\obx{3.5}     % body origin x
-\def\oby{2.4}     % body origin y
-\def\Ls{1.0}      % stern length, center to stern
-\def\Sh{1.0}      % shoulder x, where the bow starts to taper
-\def\Lb{1.7}      % bow length, center to bow tip
-\def\Bw{0.45}     % hull half width
-\def\lr{1.0}      % moment arm, center to thruster
-\def\lh{1.95}     % head point, center to head point
-%
-% ---- inertial frame, x up and y right ----
-\draw[->] (0,0) -- (0,1.7) node[left]{$x$};
-\draw[->] (0,0) -- (1.7,0) node[below]{$y$};
-\node[below left] at (0,0) {$O_i$};
-%
-% ---- heading reference line and heading angle psi ----
-\coordinate (Ob) at (\obx,\oby);
-\draw[dashed] (Ob) -- ++(0,1.5);
-\draw[->] ($(Ob)+(0,1.3)$) arc (90:\hd:1.3) node[midway,above]{$\psi$};
-%
-% ---- everything below is drawn in the hull frame, bow along +x ----
-\begin{scope}[shift={(Ob)}, rotate=\hd]
-  % RHIB hull, pointed bow at +x
-  \draw[thick, fill=blue!6, rounded corners=2pt]
-    (-\Ls,\Bw) -- (\Sh,\Bw) .. controls (\Lb,0.14) .. (\Lb,0)
-    .. controls (\Lb,-0.14) .. (\Sh,-\Bw) -- (-\Ls,-\Bw) -- cycle;
-  % inner deck outline, cosmetic, delete this block if not wanted
-  \draw[blue!35, thick, rounded corners=2pt]
-    (-0.8,0.30) -- (0.85,0.30) .. controls (1.3,0.09) .. (1.4,0)
-    .. controls (1.3,-0.09) .. (0.85,-0.30) -- (-0.8,-0.30);
-  % body origin
-  \fill (0,0) circle (1.4pt);
-  \node[above left] at (0,0) {$O_b$};
-  % body axes, surge u and sway v
-  \draw[->] (0,0) -- (2.25,0) node[right]{$u$};
-  \draw[->] (0,0) -- (0,-1.25) node[below]{$v$};
-  % yaw rate r
-  \draw[->] (0.55,0.55) arc (45:-35:0.78) node[midway,right]{$r$};
-  % moment arm l_r to the thruster
-  \draw[green!50!black, dashed] (0,0) -- (-\lr,0);
-  \node[green!45!black, above] at ({-0.5*\lr},0) {$l_r$};
-  % head point l_h
-  \fill[red!70!black] (\lh,0) circle (1.2pt);
-  \node[red!60!black, above] at (\lh,0) {$l_h$};
-  % stern thruster, thrust F at deflection delta
-  \draw[dashed] (-\lr,0) -- (-1.9,0);
-  \draw[->, thick, red!70!black] (-\lr,0) -- (-1.72,-0.42) node[below left]{$F$};
-  \draw[->] (-1.5,0) arc (180:210:0.5) node[left]{$\delta$};
-\end{scope}
-\end{tikzpicture}
+\includegraphics[width=0.92\linewidth]{fig/coordinate_frame}
 \caption{Coordinate frames and actuator geometry of the USV.}
 \label{fig_coordinate}
 \end{figure}

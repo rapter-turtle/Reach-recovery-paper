@@ -82,40 +82,49 @@ The rest of the paper is structured as follows. Section 2 reviews related work. 
 
 \section{Dynamic Modeling of Surface Vehicles}\label{sec_model}
 
-The USV is a Heron class craft described by a three degree of freedom maneuvering model in surge, sway, and yaw, following standard marine craft hydrodynamics \citep{fossen2011handbook}. The world frame and the body frame are shown in Fig.~\ref{fig_coordinate}. The USV carries a single stern thruster with a rudder, so the sway direction is unactuated.
+The USV is described by a three degree of freedom maneuvering model in surge, sway, and yaw, following standard marine craft hydrodynamics \citep{fossen2011handbook}. The world frame and the body frame are shown in Fig.~\ref{fig_coordinate}. The USV carries a single stern thruster with a rudder, so the sway direction is unactuated.
 
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[font=\small,>={Latex[length=2mm]}]
-% world frame
-\draw[->] (0,0) -- (1.2,0) node[right]{$x_i$};
-\draw[->] (0,0) -- (0,1.2) node[above]{$y_i$};
+% inertial frame, x up and y right
+\draw[->] (0,0) -- (0,1.7) node[left]{$x$};
+\draw[->] (0,0) -- (1.7,0) node[below]{$y$};
 \node[below left] at (0,0) {$O_i$};
-% hull, rotated
-\begin{scope}[shift={(3.6,1.9)}, rotate=28]
-  \draw[thick, fill=blue!8, rounded corners=2pt]
-    (-1.1,-0.42) -- (0.9,-0.42) -- (1.35,0) -- (0.9,0.42) -- (-1.1,0.42) -- cycle;
-  \node at (0,0) (Ob) {};
-  \fill (0,0) circle (1pt);
-  \node[above left=0pt and -2pt] at (0,0) {$O_b$};
+% body origin and heading reference
+\coordinate (Ob) at (3.5,2.4);
+\draw[dashed] (Ob) -- ++(0,1.5);
+\draw[->] ($(Ob)+(0,1.3)$) arc (90:55:1.3) node[midway,above]{$\psi$};
+\begin{scope}[shift={(Ob)}, rotate=55]
+  % RHIB hull with a pointed bow at +x
+  \draw[thick, fill=blue!6]
+    (-1.0,0.45) -- (0.85,0.45) .. controls (1.25,0.30) and (1.5,0.12) .. (1.65,0)
+    .. controls (1.5,-0.12) and (1.25,-0.30) .. (0.85,-0.45) -- (-1.0,-0.45)
+    .. controls (-1.2,-0.25) and (-1.2,0.25) .. cycle;
+  % inner tube outline of the RHIB
+  \draw[blue!35, thick] (-0.8,0.30) -- (0.8,0.30) .. controls (1.05,0.18) .. (1.25,0)
+    .. controls (1.05,-0.18) .. (0.8,-0.30) -- (-0.8,-0.30);
+  % body origin
+  \fill (0,0) circle (1.4pt);
+  \node[above left=-2pt] at (0,0) {$O_b$};
   % body axes
-  \draw[->] (0,0) -- (1.6,0) node[right]{$u$};
-  \draw[->] (0,0) -- (0,1.0) node[above]{$v$};
+  \draw[->] (0,0) -- (2.2,0) node[right]{$u$};
+  \draw[->] (0,0) -- (0,-1.25) node[below]{$v$};
   % yaw rate
-  \draw[->] (0.0,0.62) arc (90:20:0.62) node[right]{$r$};
+  \draw[->] (0.55,0.55) arc (45:-35:0.78) node[midway,right]{$r$};
+  % moment arm to the thruster
+  \draw[green!50!black, dashed] (0,0) -- (-1.0,0);
+  \node[green!45!black, above] at (-0.5,0) {$l_r$};
   % head point
-  \fill[red] (1.9,0) circle (1.1pt) node[above]{$l_h$};
-  \draw[dashed] (0,0) -- (1.9,0);
-  % thruster at stern with deflection
-  \draw[->,thick,red!70!black] (-1.1,0) -- ++(-0.75,0.28) node[left]{$F$};
-  \draw[dashed] (-1.1,0) -- ++(-0.7,0);
-  \draw[->] (-1.55,0) arc (180:158:0.45) node[left]{$\delta$};
+  \fill[red!70!black] (1.95,0) circle (1.2pt);
+  \node[red!60!black, above] at (1.95,0) {$l_h$};
+  % stern thruster with deflection delta and thrust F
+  \draw[dashed] (-1.0,0) -- (-1.9,0);
+  \draw[->, thick, red!70!black] (-1.0,0) -- (-1.72,-0.42) node[below left]{$F$};
+  \draw[->] (-1.5,0) arc (180:210:0.5) node[left]{$\delta$};
 \end{scope}
-% heading angle from world x to body u
-\draw[dashed] (3.6,1.9) -- ++(1.6,0);
-\draw[->] (5.0,1.9) arc (0:28:1.4) node[midway,right]{$\psi$};
 \end{tikzpicture}
-\caption{Coordinate frames of the USV. The world frame $O_i$ and the body frame $O_b$ with surge $u$, sway $v$, and yaw rate $r$, heading $\psi$, stern thrust $F$ at deflection $\delta$, and the head point at a distance $l_h$ forward of the center of gravity.}
+\caption{Coordinate frames and geometry of the USV. The inertial frame $O_i$ and the body frame $O_b$ carry the surge $u$, sway $v$, and yaw rate $r$, the heading $\psi$, the stern thrust $F$ at deflection $\delta$, the moment arm $l_r$ to the thruster, and the head point at a distance $l_h$ forward of the center of gravity.}
 \label{fig_coordinate}
 \end{figure}
 
@@ -147,12 +156,12 @@ where $l_r$ is the distance from the center of gravity to the thruster. The iden
 
 The rudder and thrust are bounded in amplitude, and their rates are bounded as well, so the admissible input sets are the following.
 \begin{equation}\label{eq_amp}
-\mathcal{U} = \big\{\, (\delta, F) \,\big|\, \delta_{\min}\le \delta\le \delta_{\max},\ 0\le F\le F_{\max} \,\big\},
+\mathcal{U} = \big\{\, (\delta, F) \,\big|\, \delta_{\min}\le \delta\le \delta_{\max},\ F_{\min}\le F\le F_{\max} \,\big\},
 \end{equation}
 \begin{equation}\label{eq_rate}
 \dot{\mathcal{U}} = \big\{\, (\dot\delta, \dot F) \,\big|\, \dot\delta_{\min}\le \dot\delta\le \dot\delta_{\max},\ \dot F_{\min}\le \dot F\le \dot F_{\max} \,\big\}.
 \end{equation}
-Only forward thrust is available, so the USV cannot brake directly. A state dependent rate clamp shrinks the admissible rate near the amplitude bounds so that $\mathcal{U}$ is never left. The slow thrust slew is the dominant time scale of the docking, since bringing the thrust from rest to full takes several seconds while the mothership advances at the stream speed $V_s$. The environmental disturbance is confined to a bounded box and is treated as a worst case adversary in the reach avoid design of Section~\ref{sec_control}. The numeric bounds and identified values are collected in Table~\ref{tab_params} in Section~\ref{sec_results}.
+A state dependent rate clamp shrinks the admissible rate near the amplitude bounds so that the actuator states never leave $\mathcal{U}$. The identified parameter values and the numeric bounds are listed in Table~\ref{tab_params} in Section~\ref{sec_results}.
 
 \section{Problem Formulation}\label{sec_problem}
 

@@ -200,35 +200,7 @@ Recovery is posed as a reach avoid problem rather than an avoidance problem, bec
 \end{figure*}
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[
-  font=\small,
-  node distance=6mm and 8mm,
-  every node/.style={align=center},
-  term/.style={rounded rectangle, draw, fill=green!12, minimum height=6mm, inner sep=2pt},
-  proc/.style={rectangle, draw, fill=blue!8, minimum height=7mm, text width=26mm, inner sep=3pt},
-  dec/.style={diamond, aspect=2, draw, fill=orange!14, inner sep=1pt, text width=20mm},
-  arr/.style={-{Latex[length=2mm]}, thick}
-]
-\node[term] (start) {Start};
-\node[proc, below=of start] (appr) {Approach the mothership};
-\node[proc, below=of appr] (dp) {Hold the DP point under Phase 1};
-\node[dec, below=of dp] (d1) {$V(s)<0$};
-\node[proc, below=of d1] (dock) {Apply the Phase 2 reach avoid policy};
-\node[dec, below=of dock] (d2) {head point in cradle};
-\node[dec, below=of d2] (d3) {$V(s)\ge 0$};
-\node[term, below=of d3, fill=green!25] (done) {Recovery complete};
-
-\draw[arr] (start) -- (appr);
-\draw[arr] (appr) -- (dp);
-\draw[arr] (dp) -- (d1);
-\draw[arr] (d1) -- node[right]{yes} (dock);
-\draw[arr] (d1.east) -- ++(1.6,0) node[above,pos=0.5]{no} |- (dp.east);
-\draw[arr] (dock) -- (d2);
-\draw[arr] (d2) -- node[right]{no} (d3);
-\draw[arr] (d3) -- node[right]{no} (done);
-\draw[arr] (d2.west) -- ++(-1.7,0) node[above,pos=0.5]{yes} |- (done.west);
-\draw[arr] (d3.east) -- ++(1.9,0) node[above,pos=0.5]{yes} |- (dp.east);
-\end{tikzpicture}
+\includegraphics[width=0.9\linewidth]{fig/recovery_flowchart}
 \caption{Recovery state machine. Phase 1 holds the DP point and hands control to the Phase 2 reach avoid policy once the state enters the learned set, and control falls back to Phase 1 if the state leaves the set before the cradle is entered.}
 \label{fig_flowchart}
 \end{figure}

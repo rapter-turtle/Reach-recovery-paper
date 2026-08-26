@@ -160,41 +160,7 @@ Recovery is posed as a reach avoid problem rather than an avoidance problem, bec
 \subsection{Recovery Framework}\label{sec_framework}
 \begin{figure*}[t]
 \centering
-\begin{tikzpicture}[font=\small,>={Latex[length=2mm]},scale=1.15,every node/.style={transform shape}]
-% mothership
-\fill[gray!25,rounded corners=3pt] (0,3.0) rectangle (8.4,3.9);
-\node[gray!50!black] at (4.2,3.45) {Mothership};
-% mothership side boundary
-\draw[dashed,orange!80!black,thick] (0,3.0) -- (8.4,3.0);
-\node[orange!70!black,anchor=west,font=\scriptsize] at (0,2.78) {Mothership side boundary $g_{\mathrm{ms}}$};
-% environment
-\foreach \y in {0.4,0.8,1.2}{\draw[->,cyan!60!black] (0.05,\y) .. controls (0.4,\y+0.12) and (0.7,\y-0.12) .. (1.0,\y);}
-\node[cyan!50!black,font=\scriptsize,anchor=west] at (0.05,1.55) {wind, waves, current};
-% cradle pocket (open toward -x)
-\begin{scope}[shift={(7.1,1.6)}]
-  \draw[thick] (1.0,-0.75) -- (0.0,-0.75) -- (0.0,0.75) -- (1.0,0.75);
-  \fill[red] (0.55,0) ++(-0.02,0) node[star,star points=5,star point ratio=2.2,fill=red,inner sep=1.4pt]{};
-  \node[red,font=\scriptsize,anchor=south] at (0.55,0.16) {cradle center};
-\end{scope}
-% DP point
-\fill (3.4,1.6) circle (2pt) node[below,font=\scriptsize] {DP point};
-% approach path (Phase 1)
-\draw[dashed,blue!70,thick] (1.3,0.7) .. controls (2.2,1.3) and (2.8,1.55) .. (3.4,1.6);
-% docking path (Phase 2)
-\draw[dotted,red!70!black,thick] (3.4,1.6) .. controls (4.6,1.6) and (6.0,1.6) .. (7.1,1.6);
-% reach avoid corridor
-\draw[green!50!black,thin] (3.6,2.2) .. controls (5.4,2.0) .. (7.1,1.75);
-\draw[green!50!black,thin] (3.6,1.0) .. controls (5.4,1.2) .. (7.1,1.45);
-\node[green!45!black,font=\scriptsize] at (5.3,2.15) {reach avoid corridor};
-% USV markers
-\node[blue!60!black] at (1.3,0.7) {$\blacktriangleright$};
-\node[blue!60!black] at (2.5,1.35) {$\blacktriangleright$};
-% phase labels
-\node[draw,blue!60!black,rounded corners,align=left,font=\scriptsize,fill=blue!5] at (2.0,0.15)
-  {\textbf{Phase 1} approach and DP\\ target DP point};
-\node[draw,red!60!black,rounded corners,align=left,font=\scriptsize,fill=red!5] at (6.4,0.55)
-  {\textbf{Phase 2} docking\\ target cradle, handoff at $V(s)<0$};
-\end{tikzpicture}
+\includegraphics[width=\linewidth]{fig/recovery_scenario}
 \caption{Two phase recovery scenario in the cradle relative frame. Phase 1 approaches the mothership side and holds the DP point clear of the side boundary. Phase 2 hands over to the learned reach avoid policy once the state enters the learned set and drives the USV into the cradle pocket.}
 \label{fig_scenario}
 \end{figure*}

@@ -136,7 +136,7 @@ The rudder and thrust are bounded in amplitude, and their rates are bounded as w
 
 \section{Problem Formulation}\label{sec_problem}
 
-Fig.~\ref{fig_scenario} illustrates the recovery task. An underactuated USV approaches from alongside the mothership and must enter the side cradle matched in position and heading, without striking the mothership hull or the cradle structure. Wind, wave, and current disturbance act on the vehicle throughout, and the cradle advances with the mothership at the stream speed $V_s$.
+The recovery task is illustrated in Fig.~\ref{fig_scenario}. An underactuated USV approaches from alongside the mothership and must enter the side cradle matched in position and heading, without striking the mothership hull or the cradle structure. Wind, wave, and current disturbance act on the vehicle throughout, and the cradle advances with the mothership at the stream speed $V_s$.
 
 The problem is posed in a cradle fixed frame that advances with the mothership at $V_s$. Because the mothership is far larger and heavier than the USV it holds its heading and moves little, and the crane stabilises the cradle against ship motion, so in this frame the cradle is nearly stationary. The state $s = [x_r, y_r, \psi_r, u, v, r, \delta, F]^\top \in \mathbb{R}^8$ collects the relative pose, the velocity, and the actuator states, the control is the pair of actuator rates $a = [\dot\delta, \dot F]^\top$, and the disturbance $w \in \mathcal{W}$ is bounded as in Section~\ref{sec_model}. Two sets describe the outcome through scalar margin functions $\ell$ and $g$,
 \begin{equation}\label{eq_margins}

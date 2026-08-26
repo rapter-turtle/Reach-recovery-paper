@@ -125,6 +125,15 @@ The rudder and thrust are bounded in amplitude, and their rates are bounded as w
 \dot{\mathcal{U}} = \big\{\, (\dot\delta, \dot F) \,\big|\, \dot\delta_{\min}\le \dot\delta\le \dot\delta_{\max},\ \dot F_{\min}\le \dot F\le \dot F_{\max} \,\big\}.
 \end{equation}
 
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\linewidth]{fig/recovery_scenario}
+\caption{Two phase recovery scenario in the cradle relative frame. Phase 1 approaches the mothership side and holds the DP point clear of the side boundary. Phase 2 hands over to the learned reach avoid policy once the state enters the learned set and drives the USV into the cradle pocket.}
+\label{fig_scenario}
+\end{figure*}
+
+
 \section{Problem Formulation}\label{sec_problem}
 
 The recovery task is stated as follows. The USV approaches from a region alongside the mothership and must enter the cradle aligned with it, without colliding with the mothership hull or the cradle structure, while a bounded environmental disturbance acts on it.
@@ -158,18 +167,14 @@ Recovery is posed as a reach avoid problem rather than an avoidance problem, bec
 \section{Control System Design}\label{sec_control}
 
 \subsection{Recovery Framework}\label{sec_framework}
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\linewidth]{fig/recovery_scenario}
-\caption{Two phase recovery scenario in the cradle relative frame. Phase 1 approaches the mothership side and holds the DP point clear of the side boundary. Phase 2 hands over to the learned reach avoid policy once the state enters the learned set and drives the USV into the cradle pocket.}
-\label{fig_scenario}
-\end{figure*}
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\linewidth]{fig/recovery_flowchart}
 \caption{Recovery state machine. Phase 1 holds the DP point and hands control to the Phase 2 reach avoid policy once the state enters the learned set, and control falls back to Phase 1 if the state leaves the set before the cradle is entered.}
 \label{fig_flowchart}
 \end{figure}
+
+
 The proposed recovery runs in two phases, illustrated in Fig.~\ref{fig_scenario}. Phase 1 covers the approach and dynamic positioning alongside the mothership and is handled by the authors' disturbance observer based model predictive controller with reach avoid control barrier functions \citep{park2026recovery}. That controller estimates and compensates slowly varying environmental loads while a funnel shaped reach avoid barrier keeps the USV inside an admissible corridor toward the station keeping point, and its details are given in the forthcoming preprint. Phase 2 is the terminal docking maneuver into the cradle, where the hand designed barrier of Phase 1 offers no guarantee that an admissible input exists under underactuation and actuator saturation, and it is executed by the robust reach avoid policy of Section~\ref{sec_rl}.
 
 The two phases are connected by the supervisor in the state machine of Fig.~\ref{fig_flowchart}, which replaces the earlier dwell time heuristic with a certified handoff. The learned value $V(s)$ of Section~\ref{sec_rl} is negative exactly on the states from which the trained policy can drive the USV into the target while avoiding every obstacle under the worst case disturbance, so the supervisor monitors its sign at the current state. Phase 1 hands control to the Phase 2 policy the moment $V(s)<0$, and if the disturbance or an imperfect handoff pushes the state back to $V(s)\ge 0$ before the cradle is entered, control falls back to the Phase 1 station keeping controller and the approach is retried. Membership in the learned reach avoid set thus certifies both the transition and the abort decision with a single scalar test.

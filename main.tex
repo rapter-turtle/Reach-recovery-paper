@@ -136,33 +136,15 @@ The rudder and thrust are bounded in amplitude, and their rates are bounded as w
 
 \section{Problem Formulation}\label{sec_problem}
 
-Fig.~\ref{fig_scenario} illustrates the recovery task. An underactuated USV approaches from a region alongside the mothership and must enter a cradle mounted on the mothership side, matching its position and heading, without colliding with the mothership hull or the cradle structure. A bounded environmental disturbance from wind, waves, and current acts on the vehicle throughout, and the cradle advances with the mothership at the stream speed $V_s$.
+Fig.~\ref{fig_scenario} illustrates the recovery task. An underactuated USV approaches from alongside the mothership and must enter the side cradle matched in position and heading, without striking the mothership hull or the cradle structure. Wind, wave, and current disturbance act on the vehicle throughout, and the cradle advances with the mothership at the stream speed $V_s$.
 
-The formulation is posed in a cradle fixed frame that advances with the mothership at $V_s$, which renders the problem time invariant. The state augments the pose and the velocity with the actuator states, so the amplitude limits of \eqref{eq_amp} are enforced through the rate limits of \eqref{eq_rate}. The state is $s = [x_r, y_r, \psi_r, u, v, r, \delta, F]^\top \in \mathbb{R}^8$, the control is the pair of actuator rates $a = [\dot\delta, \dot F]^\top$, and the disturbance $w \in \mathcal{W}$ is played by an adversary. The position kinematics carry the constant stream drift,
-\begin{equation}\label{eq_relframe}
-\begin{aligned}
-&\dot x_r = u\cos\psi_r - v\sin\psi_r - V_s, \\
-&\dot y_r = u\sin\psi_r + v\cos\psi_r, \quad \dot\psi_r = r,
-\end{aligned}
-\end{equation}
-and the actuator states integrate the commanded rates.
-
-The target set and the collision set are represented by Lipschitz margin functions $\ell$ and $g$,
+The problem is posed in a cradle fixed frame that advances with the mothership at $V_s$. The state $s = [x_r, y_r, \psi_r, u, v, r, \delta, F]^\top \in \mathbb{R}^8$ collects the relative pose, the velocity, and the actuator states, the control is the pair of actuator rates $a = [\dot\delta, \dot F]^\top$, and the disturbance $w \in \mathcal{W}$ is bounded as in Section~\ref{sec_model}. Two sets describe the outcome through Lipschitz margin functions $\ell$ and $g$,
 \begin{equation}\label{eq_margins}
 \ell(s)\le 0 \iff s\in\mathcal{T},\qquad g(s)>0 \iff s\in\mathcal{F},
 \end{equation}
-where $\mathcal{T}$ collects the states inside the cradle pocket with an aligned heading and a gentle relative velocity, and $\mathcal{F}$ collects the states in which the USV strikes the mothership hull or the cradle structure. Both sets are drawn in the zoom inset of Fig.~\ref{fig_scenario}. The concrete geometry and the numeric thresholds are given in Section~\ref{sec_results}.
+where $\mathcal{T}$ is the set of states in which the USV sits inside the cradle pocket with an aligned heading and a gentle relative velocity, that is a completed docking, and $\mathcal{F}$ is the set of states in which the USV strikes the mothership hull or the cradle structure. Both are marked in the zoom inset of Fig.~\ref{fig_scenario}, and the concrete geometry and numeric thresholds appear in Section~\ref{sec_results}.
 
-The problem is to find a control policy that drives the state into $\mathcal{T}$ while the trajectory stays out of $\mathcal{F}$ under every admissible disturbance, that is, to attain the robust reach avoid set
-\begin{equation}\label{eq_raset}
-\begin{aligned}
-\mathrm{RA}(\mathcal{T},\mathcal{F}) = \big\{\, s \,\big|\, & \exists\,a(\cdot)\ \forall\,w(\cdot)\ \exists\,\tau\ge 0,\ \xi^{a,w}_s(\tau)\in\mathcal{T} \\
-& \wedge\ \forall\kappa\in[0,\tau]\ \xi^{a,w}_s(\kappa)\notin\mathcal{F} \,\big\},
-\end{aligned}
-\end{equation}
-where $\xi^{a,w}_s$ denotes the trajectory from $s$ under control $a$ and disturbance $w$.
-
-Recovery is posed as a reach avoid problem rather than an avoidance problem because entering the moving cradle is the mission itself, and pure avoidance would make the safest policy never approach the cradle. Membership in \eqref{eq_raset} instead certifies that the target can be reached while the collision set is avoided under any admissible disturbance. As Fig.~\ref{fig_scenario} shows, the recovery runs in two phases, since underactuation and the narrow cradle prevent one controller from serving both the far approach and the terminal docking, and the sign of the reach avoid value governs the handoff between them, as detailed in Section~\ref{sec_framework}. The disturbance is held in the fixed bounded set of Section~\ref{sec_model} and is played by a maximising adversary.
+The objective is to drive the USV into $\mathcal{T}$ while its trajectory never enters $\mathcal{F}$, for every admissible disturbance. This is a reach avoid requirement rather than plain avoidance, because entering the moving cradle is the mission itself, and a policy that merely keeps clear of $\mathcal{F}$ would never dock. As shown in Fig.~\ref{fig_scenario}, the recovery is carried out in two phases, handed over as detailed in Section~\ref{sec_framework}.
 
 \section{Control System Design}\label{sec_control}
 

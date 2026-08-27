@@ -273,12 +273,12 @@ The proposed two phase recovery docked all 100 scenarios with 0 collisions and 0
 
 The effect of the mothership wall during training was assessed by comparing the learned reach avoid sets with and without it. Without the wall the value function falsely marked about 44.9 percent of the states inside the mothership as reachable, an artifact that would corrupt the certified handoff of Section~\ref{sec_control}. Adding the wall cut this false reachable claim to about 0.1 percent, while the reachable fraction of the free state set only fell from about 47.3 percent to about 44.4 percent, so the correction removed the artifact without materially shrinking the usable set. Value function slices illustrating this comparison are shown in Fig.~\ref{fig_wall_ablation}.
 
-\begin{figure}[t]
+\begin{figure*}[t]
   \centering
-  \includegraphics[width=\linewidth]{fig/trajectories_montecarlo}
-  \caption{Closed loop docking trajectories under the worst case adversary. Successful recoveries, obstacle contacts, and timeouts are distinguished, and the cradle pocket and mothership wall are drawn in the cradle relative frame.}
+  \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
+  \caption{Head point trajectories over the 100 sea scenarios for the four controllers, in the cradle relative frame. Docks, collisions, and timeouts are drawn in blue, red, and orange, and the cradle pocket and the mothership side boundary are overlaid. The proposed policy docks every scenario, while the barrier baselines collide or time out.}
   \label{fig_trajectories}
-\end{figure}
+\end{figure*}
 
 \begin{table}[t]
   \centering

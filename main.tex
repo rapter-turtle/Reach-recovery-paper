@@ -164,6 +164,13 @@ The two phases are connected by a supervisor, whose state machine is shown in Fi
 \subsection{Robust Reach Avoid Reinforcement Learning}\label{sec_rl}
 The reach avoid recovery problem posed earlier is naturally solved by Hamilton Jacobi reachability analysis \citep{mitchell2005time, bansal2017hamilton, lygeros2004reachability}. The USV is underactuated with a single stern thruster and a rudder, it faces a bounded environmental disturbance, and it must reach a cradle that moves with the mothership while avoiding collision. This casts recovery as a two player differential game in which the control minimises a value and the bounded disturbance maximises it. The value assigns to every state a number, and the states where this number is at most zero form the set of interest.
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
+  \caption{Learned robust reach avoid set at three headings and the docking speed. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
+  \label{fig_set}
+\end{figure*}
+
 The reach avoid problem asks the system to reach the target set $\mathcal{T}$ while never entering the failure set $\mathcal{F}$, under the worst case disturbance \citep{margellos2011hamilton, fisac2015reach, hsu2021safety}. The control is the pair of actuator rates $a = [\dot\delta, \dot F]^\top$, the rates of the thrust and the rudder, and the amplitudes $\delta$ and $F$ are carried in the state $s$, so bounding $a$ enforces the actuator rate limits while the amplitude limits act through the state. Let $\xi^{a}_s(\cdot)$ denote the state trajectory from $s$ under the control $a$, and let $\tau$ and $\kappa$ be times. With the target margin $\ell$ and the failure margin $g$ of \eqref{eq_margins}, the reach avoid outcome of a trajectory is the payoff, and the value is its optimum over the control.
 \begin{equation}\label{eq_payoff}
 \begin{aligned}
@@ -218,12 +225,7 @@ where $Q_1^{-}, Q_2^{-}$ are target networks and $\ell_k, g_k$ are the reach and
 
 The implementation follows the TD3 recipe. The minimum of the twin critics is used everywhere the value appears, which limits the overestimation that would otherwise inflate the reachable set, target networks are updated by soft Polyak averaging, and both actors are updated at a reduced frequency relative to the critics. The delayed updates proved necessary, since with synchronous updates the actor diverged near the corridor edge where the reach and avoid branches of the backup exchange dominance. Two further training measures were essential. First, the adversary is introduced through a staged disturbance ramp that starts at a zero bound and grows in stages to the full box, so the protagonist first learns a nominal docking maneuver and then hardens it, whereas training against the full adversary from the start collapsed to overly conservative behavior. Second, the mothership side wall is kept in the avoid margin during training, because without it the learned value marked much of the mothership interior as reachable and adding the wall removed these false reachable claims while leaving the genuinely recoverable set essentially intact, as quantified in Section~\ref{sec_results}. The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, where the shaded region marks the negative part of the learned value, that is the states from which the policy recovers the USV, and its zero level is the boundary of the set.
 
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
-  \caption{Learned robust reach avoid set at three headings and the docking speed. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
-  \label{fig_set}
-\end{figure*}
+
 
 \section{Results}\label{sec_results}
 

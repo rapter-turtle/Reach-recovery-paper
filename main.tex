@@ -271,7 +271,7 @@ The reach avoid value and the two actors were trained on the shared model with d
 
 The proposed two phase recovery docked all 100 scenarios with 0 collisions and 0 timeouts, a median recovery time of 33 s, and a worst case clearance of 0.69 m, so it stayed well clear of the obstacles. The DOB-MPC with RaCBF swung with the barrier gain. At gain (1) it docked 95 of 100 but struck the structure in 5, with a worst clearance of $-0.003$ m and a median of 39.7 s, since near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver. At gain (2) it had 0 collisions but the stronger barrier held the hull off the cradle, so it timed out in 2 of 100, with a worst clearance of 0.41 m and a median of 41.6 s. A gain sweep showed the dependence is not monotone, moving from 7 collisions at the weakest gain, through a narrow band that docked all 100, to 2 timeouts at the strongest, so only a delicately tuned gain reached full success. The ALOS CBF guidance was weaker still, docking 0 of 100 untuned and, even after heavy retuning, only 69 of 100 with 16 collisions, 15 timeouts, a median of 48.3 s, and a worst clearance of $-0.003$ m. Because the two phase docking carries the reach avoid value rather than a barrier gain, its result held at every gain, and the setting that cost the baseline five hulls was invisible to it. The reach avoid policy also ran fastest and most consistently, at 0.6 ms per call on average with a worst case of 1.7 ms, against about 4 ms and a worst case of 16 ms for the DOB-MPC with RaCBF and about 4 ms with spikes to 56 ms for the ALOS CBF, since it is a single network evaluation with no online optimization. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and the rudder stay within their limits and the clearance stays positive throughout. The five scenario comparison across the controllers is shown in Fig.~\ref{fig_trajectories}, the outcome counts in Fig.~\ref{fig_success}, and the aggregate statistics in Table~\ref{tab_montecarlo}.
 
-The effect of the mothership wall during training was assessed by comparing the learned reach avoid sets with and without it. Without the wall the value function falsely marked about 44.9 percent of the states inside the mothership as reachable, an artifact that would corrupt the certified handoff of Section~\ref{sec_control}. Adding the wall cut this false reachable claim to about 0.1 percent, while the reachable fraction of the free state set only fell from about 47.3 percent to about 44.4 percent, so the correction removed the artifact without materially shrinking the usable set. Value function slices illustrating this comparison are shown in Fig.~\ref{fig_wall_ablation}.
+The effect of the mothership wall during training was assessed by comparing the learned reach avoid sets with and without it. Without the wall the value function falsely marked about 44.9 percent of the states inside the mothership as reachable, an artifact that would corrupt the certified handoff of Section~\ref{sec_control}. Adding the wall cut this false reachable claim to about 0.1 percent, while the reachable fraction of the free state set only fell from about 47.3 percent to about 44.4 percent, so the correction removed the artifact without materially shrinking the usable set.
 
 \begin{figure*}[t]
   \centering
@@ -309,13 +309,6 @@ The effect of the mothership wall during training was assessed by comparing the 
   \includegraphics[width=0.92\linewidth]{fig/success_bar}
   \caption{Outcome of the 100 sea scenarios for each controller, counted as docks, collisions, and timeouts. The proposed policy docks every scenario, the barrier baselines a few less, and the ALOS CBF guidance far fewer.}
   \label{fig_success}
-\end{figure}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{fig/value_wall_comparison}
-  \caption{Learned reach avoid value slices trained without and with the mothership wall. The wall removes the false reachable region inside the mothership while leaving the free state set nearly unchanged.}
-  \label{fig_wall_ablation}
 \end{figure}
 
 \subsection{Processor in the loop simulation}\label{sec_results_pil}

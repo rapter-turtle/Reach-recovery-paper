@@ -221,7 +221,7 @@ with the pocket half sizes, the heading tolerance, and the soft docking gate on 
 \begin{equation}\label{eq_avoid}
 g(s) = \max_{i}\, g_i(s).
 \end{equation}
-\begin{figure}[t]
+\begin{figure}
 \centering
 \includegraphics[width=0.95\linewidth]{fig/set_geometry}
 \caption{Geometry of the docking target and the collision set in the cradle fixed frame, with the variables of Table~\ref{tab_set}. The pocket half sizes $C_X$ and $C_Y$, the wall thickness $T_W$, the mothership side boundary $Y_{MS}$, the head point offset $l_h$, the relative heading $\psi_r$, and the stream speed $V_s$ are marked, and the target set $\mathcal{T}$ is shaded inside the cradle.}
@@ -257,7 +257,7 @@ Thrust rate ($\dot F$)      & $\pm 0.36$ [kN/s]              &              &   
 \end{tabular}}
 \end{table}
 
-\begin{table}[t]
+\begin{table}
 \centering
 \renewcommand{\arraystretch}{1.2}
 \caption{Parameters of the docking target, the collision set, and the training episode.}
@@ -280,7 +280,7 @@ Episode horizon              & 30 [s]       \\
 
 The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, drawn over the head point at which the reach and avoid conditions are evaluated. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
 
-\begin{figure*}[t]
+\begin{figure*}
   \centering
   \includegraphics[width=\linewidth]{fig/reach_avoid_set}
   \caption{Learned robust reach avoid set at three headings and the docking speed, in the head point frame $(x_h, y_h)$ at which the reach and avoid conditions are evaluated. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
@@ -307,14 +307,14 @@ Aggregate behavior over the scenario set appears in Fig.~\ref{fig_montecarlo}. I
   \label{fig_trajectories}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}
   \centering
   \includegraphics[width=\linewidth]{fig/montecarlo_summary}
   \caption{Monte Carlo summary over the 100 sea scenarios. (a) Recovery outcome counted as docks, collisions, and timeouts. (b) Recovery time over the docked scenarios, the mean with one standard deviation. (c) Worst clearance to the obstacles over all scenarios. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
   \label{fig_montecarlo}
 \end{figure*}
 
-\begin{table}[t]
+\begin{table}
   \centering
   \caption{Per call computation time of the docking controllers over the 100 sea scenarios, compared against the 0.2 s control period. For the proposed method this is the Phase 2 reach avoid set control, a single network evaluation.}
   \label{tab_compute}

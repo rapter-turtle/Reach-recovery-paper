@@ -162,47 +162,28 @@ The recovery runs in two phases, shown in Fig.~\ref{fig_scenario}. The reach avo
 The two phases are connected by a supervisor, whose state machine is shown in Fig.~\ref{fig_flowchart}. The Phase 2 policy of Section~\ref{sec_rl} carries the value function $V$ of the Hamilton Jacobi reach avoid problem, and the reach avoid set is where $V(s)<0$. From such a state the USV can reach the target and avoid the failure set under the worst case disturbance, and a state with $V(s)\ge 0$ lies outside the set. Phase 1 first brings the USV to the vicinity of the dynamic positioning point, and the supervisor then begins to test the sign of $V(s)$. When $V(s)<0$ it hands control to the Phase 2 policy, and control falls back to Phase 1 when $V(s)\ge 0$ before the cradle is entered, so a single scalar test governs both the transition and the abort. A disturbance larger than predicted can arrive suddenly, or a communication or mechanical fault can occur, and either can drive the state out of the reach avoid set during docking, so the sign test returns control to Phase 1 and the approach is retried.
 
 \subsection{Robust Reach Avoid Reinforcement Learning}\label{sec_rl}
-The reach avoid recovery problem posed earlier is naturally solved by Hamilton Jacobi reachability analysis \citep{mitchell2005time, bansal2017hamilton, lygeros2004reachability}. The USV is underactuated with a single stern thruster and a rudder, it faces a bounded environmental disturbance, and it must reach a cradle that moves with the mothership while avoiding collision. This casts recovery as a two player differential game in which the control minimises a value and the bounded disturbance maximises it. The value assigns to every state a number, and the states where this number is at most zero form the set of interest.
+The terminal docking task posed above is a robust reach avoid problem. An underactuated USV with a single stern thruster and rudder must enter a cradle that moves with the mothership while a bounded environmental disturbance acts on the hull, and we solve it with Hamilton Jacobi reachability \citep{mitchell2005time, bansal2017hamilton, lygeros2004reachability}. The reachability value function assigns to each state a single signed scalar, the best reach avoid outcome achievable from that state over the horizon under the worst case disturbance, so it behaves like a signed margin to the boundary of the recoverable set. The value is negative inside the set and positive outside. It is most negative deep inside, where the state is recovered with the widest margin, it approaches zero at the boundary, and outside the set it is positive by the amount the best control still fails to reach the cradle without touching the failure set. This margin is a value margin rather than a literal Euclidean distance, since it stays negative throughout the interior. The state $s$, the target set $\mathcal{T}$, the failure set $\mathcal{F}$, and the margins $\ell$ and $g$ were defined in Section~\ref{sec_problem}.
 
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
-  \caption{Learned robust reach avoid set at three headings and the docking speed. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
-  \label{fig_set}
-\end{figure*}
-
-The reach avoid problem asks the system to reach the target set $\mathcal{T}$ while never entering the failure set $\mathcal{F}$, under the worst case disturbance \citep{margellos2011hamilton, fisac2015reach, hsu2021safety}. Let $\xi^{a}_s(\cdot)$ denote the state trajectory from $s$ under the control $a$, and let $\tau$ and $\kappa$ be times. With the target margin $\ell$ and the failure margin $g$ of \eqref{eq_margins}, the reach avoid outcome of a trajectory is the payoff, and the value is its optimum over the control.
+The control minimizes the reach avoid outcome while the worst case disturbance maximizes it, a two player differential game in the sense of Margellos and Lygeros \citep{margellos2011hamilton, fisac2015reach, hsu2021safety}. Writing $\xi^{a,w}_s(\cdot)$ for the trajectory from $s$ under control $a$ and disturbance $w$, with $\tau$ and $\kappa$ times along it, the value is
 \begin{equation}\label{eq_payoff}
-\begin{aligned}
-V^{a}(s) &= \min_{\tau\ge 0}\, \max\Big\{ \ell\big(\xi^{a}_s(\tau)\big),\ \max_{\kappa\in[0,\tau]} g\big(\xi^{a}_s(\kappa)\big) \Big\}, \\
-V(s) &= \inf_{a} V^{a}(s).
-\end{aligned}
+V(s) = \inf_{a}\ \sup_{w}\ \min_{\tau\ge 0}\, \max\Big\{ \ell\big(\xi^{a,w}_s(\tau)\big),\ \max_{\kappa\in[0,\tau]} g\big(\xi^{a,w}_s(\kappa)\big) \Big\}.
 \end{equation}
-The value is negative exactly on the reach avoid set $\mathrm{RA}(\mathcal{T},\mathcal{F})$, the states from which the control can steer the trajectory into $\mathcal{T}$ while keeping it clear of $\mathcal{F}$, that is $V(s)\le 0 \iff s\in\mathrm{RA}(\mathcal{T},\mathcal{F})$. Dynamic programming turns \eqref{eq_payoff} into the reach avoid Bellman equation \citep{hsu2021safety}, with $s'$ the next state.
+The value is at most zero exactly on the robust reach avoid set $\mathrm{RA}(\mathcal{T},\mathcal{F})$, the states from which some control drives the head point into $\mathcal{T}$ and keeps both reference points clear of $\mathcal{F}$ against every admissible disturbance, that is $V(s)\le 0 \iff s\in\mathrm{RA}(\mathcal{T},\mathcal{F})$. Dynamic programming turns \eqref{eq_payoff} into the robust reach avoid Bellman equation \citep{hsu2021safety}. With $s'_{a,w}$ the next state under $a$ and $w$ it reads
 \begin{equation}\label{eq_rabe}
-V(s) = \max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a} V(s') \big\} \Big\}.
+V(s) = \max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a}\ \sup_{w}\ V(s'_{a,w}) \big\} \Big\}.
 \end{equation}
-This Bellman equation was solved classically by grid based dynamic programming, but such solvers scale exponentially with the state dimension and cannot be applied to the eight dimensional state of Section~\ref{sec_model}, which motivates the learning based method developed next. A discount $\gamma\in[0,1)$ makes the backup a contraction \citep{fisac2019bridging, hsu2021safety}. This is the discounted reach avoid Bellman equation.
+Grid based dynamic programming solves \eqref{eq_rabe} in the classical setting but scales exponentially with the state dimension and cannot reach the eight dimensional state of Section~\ref{sec_model}, which motivates a learning method. Discounting by $\gamma\in[0,1)$ makes the backup a contraction \citep{fisac2019bridging, hsu2021safety} and yields the robust discounted reach avoid Bellman equation, whose operator we denote $\mathcal{B}_\gamma$,
 \begin{equation}\label{eq_drabe}
 \begin{aligned}
 V_\gamma(s) = {}& (1-\gamma)\max\{\ell(s), g(s)\} \\
-&+ \gamma\,\max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a} V_\gamma(s') \big\} \Big\}.
+&+ \gamma\,\max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a}\ \sup_{w}\ V_\gamma(s'_{a,w}) \big\} \Big\}.
 \end{aligned}
 \end{equation}
-Related reachability constrained formulations appear in \citet{yu2022reachability}.
-
-The proposed method extends this discounted backup to the disturbed setting. Under a bounded disturbance the next state depends on both the control and the disturbance, so the future value becomes a differential game in which the protagonist control minimizes and the adversary disturbance maximizes, in the sense of Margellos and Lygeros \citep{margellos2011hamilton}. Replacing the future value operator with the game value yields the robust discounted reach avoid Bellman equation.
-\begin{equation}\label{eq_robust}
-\begin{aligned}
-V_\gamma(s) = {}& (1-\gamma)\max\{\ell(s), g(s)\} \\
-&+ \gamma\,\max\Big\{ g(s),\ \min\big\{ \ell(s),\ \inf_{a}\ \sup_{w}\ V_\gamma(s'_{a,w}) \big\} \Big\},
-\end{aligned}
-\end{equation}
-where $s'_{a,w}$ is the next state under control $a$ and disturbance $w$. Denote the operator on the right by $\mathcal{B}_\gamma$. Two guarantees carry over from the undisturbed case, with proofs deferred to the appendix.
-\begin{proposition}
-For every $\gamma\in[0,1)$ the operator $\mathcal{B}_\gamma$ is a contraction under the supremum norm, so \eqref{eq_robust} has a unique fixed point $V_\gamma$.
+We do not claim this backup as our own. The robust discounted backup is the reach avoid game counterpart of the discounted reach avoid backup of \citet{hsu2021safety} and \citet{fisac2019bridging}, and related robust and reachability constrained formulations appear in \citet{li2023robust, hsu2023isaacs, yu2022reachability}. Our contribution is not the backup but learning its value and a deployable robust policy for cradle recovery of an underactuated USV. Two guarantees carry over from the undisturbed case and are proved in Appendix~\ref{app_proofs}.
+\begin{proposition}\label{prop_contraction}
+For every $\gamma\in[0,1)$ the operator $\mathcal{B}_\gamma$ is a contraction under the supremum norm, so \eqref{eq_drabe} has a unique fixed point $V_\gamma$.
 \end{proposition}
-\begin{theorem}
+\begin{theorem}\label{thm_underapprox}
 For discount factors $0\le\gamma_1\le\gamma_2<1$ the induced sets satisfy $\mathrm{RA}_{\gamma_1}\subseteq\mathrm{RA}_{\gamma_2}\subseteq\mathrm{RA}(\mathcal{T},\mathcal{F})$, where $\mathrm{RA}_{\gamma}=\{s\,|\,V_\gamma(s)\le 0\}$, and $\mathrm{RA}_{\gamma}$ converges to $\mathrm{RA}(\mathcal{T},\mathcal{F})$ in the Hausdorff distance as $\gamma\to 1$.
 \end{theorem}
 The fixed point is therefore a conservative under approximation of the true robust reach avoid set. A state the value declares recoverable is recoverable under the worst case disturbance up to function approximation error, which is what makes the sign of $V$ a sound certificate for the handoff of Section~\ref{sec_framework}.
@@ -221,26 +202,35 @@ y_k = {}& (1-\gamma)\max\big(g_k, \ell_k\big) \\
 &+ \gamma\max\Big(g_k, \min\big(\ell_k, y_{k+1}\big)\Big),\ k = N-1, \dots, 0,
 \end{aligned}
 \end{equation}
-where $Q_1^{-}, Q_2^{-}$ are target networks and $\ell_k, g_k$ are the reach and avoid payoffs along the stored subtrajectory. Setting $N=1$ recovers \eqref{eq_robust} in a single step, while larger $N$ folds the reach and avoid information of $N$ consecutive payoffs into one regression target and propagates it backward correspondingly faster. The discount $\gamma$ is set close to one so that the induced set stays a tight under approximation of the true reach avoid set.
+where $Q_1^{-}, Q_2^{-}$ are target networks and $\ell_k, g_k$ are the reach and avoid payoffs along the stored subtrajectory. Setting $N=1$ recovers \eqref{eq_drabe} in a single step, while larger $N$ folds the reach and avoid information of $N$ consecutive payoffs into one regression target and propagates it backward correspondingly faster. The discount $\gamma$ is set close to one so that the induced set stays a tight under approximation of the true reach avoid set.
 
-The implementation follows the TD3 recipe. The minimum of the twin critics is used everywhere the value appears, which limits the overestimation that would otherwise inflate the reachable set, target networks are updated by soft Polyak averaging, and both actors are updated at a reduced frequency relative to the critics. The delayed updates proved necessary, since with synchronous updates the actor diverged near the corridor edge where the reach and avoid branches of the backup exchange dominance. Two further training measures were essential. First, the adversary is introduced through a staged disturbance ramp that starts at a zero bound and grows in stages to the full box, so the protagonist first learns a nominal docking maneuver and then hardens it, whereas training against the full adversary from the start collapsed to overly conservative behavior. Second, the mothership side wall is kept in the avoid margin during training, because without it the learned value marked much of the mothership interior as reachable and adding the wall removed these false reachable claims while leaving the genuinely recoverable set essentially intact, as quantified in Section~\ref{sec_results}. The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, where the shaded region marks the negative part of the learned value, that is the states from which the policy recovers the USV, and its zero level is the boundary of the set.
+The implementation follows the TD3 recipe. The minimum of the twin critics is used everywhere the value appears, which limits the overestimation that would otherwise inflate the reachable set, target networks are updated by soft Polyak averaging, and both actors are updated at a reduced frequency relative to the critics. The delayed updates proved necessary, since with synchronous updates the actor diverged near the corridor edge where the reach and avoid branches of the backup exchange dominance. Two further training measures were essential. First, the adversary is introduced through a staged disturbance ramp that starts at a zero bound and grows in stages to the full box, so the protagonist first learns a nominal docking maneuver and then hardens it, whereas training against the full adversary from the start collapsed to overly conservative behavior. Second, the mothership side wall is kept in the avoid margin during training, because without it the learned value marked much of the mothership interior as reachable and adding the wall removed these false reachable claims while leaving the genuinely recoverable set essentially intact, as shown in Section~\ref{sec_results}.
 
 
 
 \section{Results}\label{sec_results}
 
-The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign driven by the worst case adversary, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified USV model of Section~\ref{sec_model}, collected in Table~\ref{tab_params}, and the docking target and collision set defined next. The reach and the avoid conditions are evaluated at a head point $3.0$ m forward of the center of gravity, with position $(x_h, y_h)$, since the bow crosses the cradle mouth first. The target margin takes the box form
+The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign of physical sea scenarios, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified USV model of Section~\ref{sec_model}, whose parameters are collected in Table~\ref{tab_params}, and the docking geometry collected in Table~\ref{tab_set}. The reach and avoid conditions are evaluated at a head point a fixed distance forward of the center of gravity, with position $(x_h, y_h)$, because the bow crosses the cradle mouth first. The target margin takes the box form
 \begin{equation}\label{eq_reach}
 \begin{aligned}
 \ell(s) = \max\big(&|x_h|-C_X,\ |y_h|-C_Y,\ |\psi_r|-\Theta, \\
 &|\dot x_r|-U_d,\ |\dot y_r|-U_d\big),
 \end{aligned}
 \end{equation}
-with pocket half sizes $C_X=4.0$ m and $C_Y=1.75$ m, heading tolerance $\Theta=40$ deg, and a soft docking gate $U_d=1.0$ m/s on the cradle relative velocity, so a state that meets the gate enters nearly at rest with respect to the cradle. The collision set collects the three cradle walls of thickness $0.6$ m and the mothership side boundary, checked at the head point and, for the mothership, also at the center of gravity, and the avoid margin is their pointwise maximum.
+with the pocket half sizes, the heading tolerance, and the soft docking gate on the cradle relative velocity given in Table~\ref{tab_set}, so a state that meets the gate enters nearly at rest with respect to the cradle. The collision set collects the three cradle walls and the mothership side boundary, checked at the head point and, for the mothership, also at the center of gravity, and the avoid margin is their pointwise maximum,
 \begin{equation}\label{eq_avoid}
 g(s) = \max_{i}\, g_i(s).
 \end{equation}
-The dynamics are discretised at $0.2$ s, a control rate of $5$ Hz, and each episode lasts $30$ s.
+The dynamics are discretised at the control period of Table~\ref{tab_set} and each episode has a fixed horizon.
+
+The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
+  \caption{Learned robust reach avoid set at three headings and the docking speed. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
+  \label{fig_set}
+\end{figure*}
 
 \begin{table}[t]
 \centering
@@ -252,17 +242,37 @@ The dynamics are discretised at $0.2$ s, a control rate of $5$ Hz, and each epis
 \hline
 \multicolumn{2}{c|}{\textbf{Physical Parameters}} & \multicolumn{2}{c}{\textbf{Hydrodynamic Parameters}} \\ \hline
 \textbf{Parameter} & \textbf{Value [Unit]} & \textbf{Parameter} & \textbf{Value} \\ \hline
-Head point ($l_h$)      & 3.0 [m]      & $X_u$        & 0.0845  \\
-Moment arm ($l_r$)      & 3.5 [m]      & $X_{u|u|}$   & 0.0195  \\
-Pocket length ($C_X$)   & 4.0 [m]      & $Y_v$        & 0.0485  \\
-Pocket width ($C_Y$)    & 1.75 [m]     & $Y_{v|v|}$   & 0.0988  \\
-Heading tol. ($\Theta$) & 40 [deg]     & $Y_r$        & 0.151   \\
-Stream speed ($V_s$)    & 3.087 [m/s]  & $N_v$        & 0       \\
-Max thrust ($F_{\max}$) & 20.5 [N]     & $N_r$        & 0.6939  \\
-Rudder range            & 57.3 [deg]   & $N_{r|r|}$   & 0       \\
-Docking gate ($U_d$)    & 1.0 [m/s]    & $m_{11}, m_{22}, m_{33}$ & 1, 1, 1 \\
+Moment arm ($l_r$)       & 3.5 [m]     & $X_u$        & 0.0845  \\
+Max thrust ($F_{\max}$)  & 20.5 [N]    & $X_{u|u|}$   & 0.0195  \\
+Rudder range             & 57.3 [deg]  & $Y_v$        & 0.0485  \\
+$m_{11}, m_{22}, m_{33}$ & 1, 1, 1     & $Y_{v|v|}$   & 0.0988  \\
+                         &             & $Y_r$        & 0.151   \\
+                         &             & $N_v$        & 0       \\
+                         &             & $N_r$        & 0.6939  \\
+                         &             & $N_{r|r|}$   & 0       \\
 \hline
 \end{tabular}}
+\end{table}
+
+\begin{table}[t]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\caption{Parameters of the docking target, the collision set, and the training episode.}
+\label{tab_set}
+\begin{tabular}{lc}
+\hline
+\textbf{Parameter} & \textbf{Value [Unit]} \\ \hline
+Head point ($l_h$)           & 3.0 [m]      \\
+Pocket length ($C_X$)        & 4.0 [m]      \\
+Pocket width ($C_Y$)         & 1.75 [m]     \\
+Wall thickness ($T_W$)       & 0.6 [m]      \\
+Heading tolerance ($\Theta$) & 40 [deg]     \\
+Docking gate ($U_d$)         & 1.0 [m/s]    \\
+Stream speed ($V_s$)         & 3.087 [m/s]  \\
+Control period               & 0.2 [s]      \\
+Episode horizon              & 30 [s]       \\
+\hline
+\end{tabular}
 \end{table}
 
 \subsection{Numerical simulation}\label{sec_results_sim}
@@ -322,7 +332,17 @@ The trained policy was deployed in an embedded processor in the loop setup, with
 
 \section{Conclusion}\label{sec_conclusion}
 
-This paper formulated the docking phase of USV cradle recovery as a robust discounted reach avoid problem, extending the discounted reach avoid backup to a bounded disturbance game whose fixed point under approximates the true reach avoid set and converges to it as the discount tends to one, and embedded the learned value in a certified two phase framework in which membership in the reach avoid set decides both the handoff from the approach controller and the fallback out of the docking phase. In Monte Carlo simulations against the worst case adversary the learned policy recovered the underactuated USV into the moving cradle with a high success rate and very few collisions, and it transferred to an embedded processor in the loop deployment within the control period, whereas the hand designed funnel barrier failed through actuator saturation under the same underactuation. The certificate is limited by the approximation error of the learned value and policy, and the method has not yet been validated in full scale sea trials, so future work will pursue verified error bounds on the learned set and experimental recovery campaigns at sea.
+This paper formulated the docking phase of USV cradle recovery as a robust discounted reach avoid game whose fixed point under approximates the true reach avoid set and converges to it as the discount tends to one, and embedded the learned value in a certified two phase framework in which membership in the reach avoid set decides both the handoff from the approach controller and the fallback out of the docking phase. In Monte Carlo simulations over physical sea scenarios the learned policy recovered the underactuated USV into the moving cradle with a high success rate and very few collisions, and it transferred to an embedded processor in the loop deployment within the control period, whereas the hand designed funnel barrier failed through actuator saturation under the same underactuation. The certificate is limited by the approximation error of the learned value and policy, and the method has not yet been validated in full scale sea trials, so future work will pursue verified error bounds on the learned set and experimental recovery campaigns at sea.
+
+\begin{appendices}
+\section{Proofs}\label{app_proofs}
+\begin{proof}[Proof of Proposition~\ref{prop_contraction}]
+Write $\mathcal{B}_\gamma V(s) = (1-\gamma)\max\{\ell(s),g(s)\} + \gamma\,\mathcal{H}[V](s)$, where $\mathcal{H}[V](s) = \max\{g(s),\ \min\{\ell(s),\ \inf_{a}\sup_{w} V(s'_{a,w})\}\}$. The first term does not depend on $V$. For bounded functions $V$ and $V'$, taking an infimum over $a$ and a supremum over $w$ of quantities that differ pointwise by at most $\|V-V'\|_\infty$ changes the result by at most $\|V-V'\|_\infty$, and the maps $x\mapsto\min\{\ell(s),x\}$ and $x\mapsto\max\{g(s),x\}$ are nonexpansive. Composing these nonexpansive operations gives $|\mathcal{H}[V](s)-\mathcal{H}[V'](s)|\le\|V-V'\|_\infty$ for every $s$, so $\|\mathcal{B}_\gamma V-\mathcal{B}_\gamma V'\|_\infty\le\gamma\,\|V-V'\|_\infty$. Hence $\mathcal{B}_\gamma$ is a contraction of modulus $\gamma$ on the bounded functions under the supremum norm, and the Banach fixed point theorem yields a unique fixed point $V_\gamma$. The argument follows the discounted reach avoid backup of \citet{hsu2021safety} and \citet{fisac2019bridging}, with the single control infimum replaced by the game value $\inf_{a}\sup_{w}$.
+\end{proof}
+\begin{proof}[Proof of Theorem~\ref{thm_underapprox}]
+By Proposition~\ref{prop_contraction} each $V_\gamma$ is well defined. Discounting is conservative, so $V_\gamma$ upper bounds the undiscounted value $V$ of \eqref{eq_rabe}, which gives $\mathrm{RA}_\gamma=\{V_\gamma\le 0\}\subseteq\{V\le 0\}=\mathrm{RA}(\mathcal{T},\mathcal{F})$. The induced sets are nested in the discount, $\mathrm{RA}_{\gamma_1}\subseteq\mathrm{RA}_{\gamma_2}$ for $\gamma_1\le\gamma_2$, and they grow to $\mathrm{RA}(\mathcal{T},\mathcal{F})$ in the Hausdorff distance as $\gamma\to 1$. These monotonicity and convergence properties are the reach avoid game counterpart of the discounted analysis of \citet{fisac2019bridging} and \citet{hsu2021safety}, which is unchanged when the single control operator is replaced by the game value $\inf_{a}\sup_{w}$, and we refer to those works for the full limiting argument.
+\end{proof}
+\end{appendices}
 
 \section*{Acknowledgements}
 This research was supported by the Ministry of Oceans and Fisheries, Republic of Korea.

@@ -84,7 +84,7 @@ The rest of the paper is structured as follows. Section 2 reviews related work. 
 
 The USV is described by a three degree of freedom maneuvering model in surge, sway, and yaw, following standard marine craft hydrodynamics \citep{fossen2011handbook}. The world frame and the body frame are shown in Fig.~\ref{fig_coordinate}. The USV carries a single stern thruster with a rudder, so the sway direction is unactuated.
 
-\begin{figure}[t]
+\begin{figure}
 \centering
 \includegraphics[width=0.6\linewidth]{fig/coordinate_frame}
 \caption{Coordinate frames and actuator geometry of the USV.}
@@ -126,7 +126,7 @@ The rudder and thrust are bounded in amplitude, and their rates are bounded as w
 \end{equation}
 
 
-\begin{figure*}[t]
+\begin{figure*}
 \centering
 \includegraphics[width=\linewidth]{fig/recovery_scenario}
 \caption{Top view of the recovery scenario. The mothership advances at the stream speed $V_s$ while the USV executes the two phase recovery, first holding the dynamic positioning point and then docking from within the reach avoid set of the learned policy, and the zoom inset marks the target set inside the cradle and the surrounding collision set.}
@@ -149,7 +149,7 @@ The objective is to drive the USV so the head point reaches $\mathcal{T}$ while 
 \section{Control System Design}\label{sec_control}
 
 \subsection{Recovery Framework}\label{sec_framework}
-\begin{figure}[t]
+\begin{figure}
 \centering
 \includegraphics[width=0.9\linewidth]{fig/recovery_flowchart}
 \caption{Recovery state machine. Phase 1 holds the DP point and hands control to the Phase 2 reach avoid policy once the state enters the learned set, and control falls back to Phase 1 if the state leaves the set before the cradle is entered.}
@@ -164,7 +164,7 @@ The two phases are connected by a supervisor, whose state machine is shown in Fi
 \subsection{Robust Reach Avoid Reinforcement Learning}\label{sec_rl}
 The reach avoid recovery problem posed earlier is naturally solved by Hamilton Jacobi reachability analysis \citep{mitchell2005time, bansal2017hamilton, lygeros2004reachability}. The USV is underactuated with a single stern thruster and a rudder, it faces a bounded environmental disturbance, and it must reach a cradle that moves with the mothership while avoiding collision. This casts recovery as a two player differential game in which the control minimises a value and the bounded disturbance maximises it. The value assigns to every state a number, and the states where this number is at most zero form the set of interest.
 
-\begin{figure*}[t]
+\begin{figure*}
   \centering
   \includegraphics[width=\linewidth]{fig/reach_avoid_set}
   \caption{Learned robust reach avoid set at three headings and the docking speed. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
@@ -242,7 +242,7 @@ g(s) = \max_{i}\, g_i(s).
 \end{equation}
 The dynamics are discretised at $0.2$ s, a control rate of $5$ Hz, and each episode lasts $30$ s.
 
-\begin{table}[t]
+\begin{table}
 \centering
 \renewcommand{\arraystretch}{1.2}
 \caption{Physical and hydrodynamic parameters of the USV.}
@@ -271,21 +271,21 @@ The reach avoid value and both adversarial actors were trained on the shared veh
 
 The proposed two phase recovery docked every scenario with no collision and no timeout and stayed clear of the obstacles throughout, and it was also the fastest and most consistent to compute, since each action is a single network evaluation with no online optimization. The DOB-MPC with RaCBF depended strongly on the barrier gain. At the nominal gain it docked nearly all scenarios but struck the structure in a few, because near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver, while at the stronger gain the collisions vanished but the barrier held the hull off the cradle and a few scenarios timed out instead. A sweep of the gain showed that this dependence is not monotone, passing from collisions at the weakest settings through a narrow band that docked every scenario to timeouts at the strongest, so only a delicately tuned gain reached full success. Because the two phase policy carries the reach avoid value rather than a barrier gain, its outcome was invariant to this tuning. The ALOS CBF guidance was weakest, failing to dock untuned and recovering only a fraction of the scenarios even after heavy retuning, with many collisions and timeouts. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and rudder stay within their limits and the clearance remains positive throughout, the trajectories of the controllers over common scenarios appear in Fig.~\ref{fig_trajectories}, the outcome counts are summarized in Fig.~\ref{fig_success}, and the aggregate statistics are reported in Table~\ref{tab_montecarlo}.
 
-\begin{figure*}[t]
+\begin{figure*}
   \centering
   \includegraphics[width=0.92\linewidth]{fig/rep_run}
   \caption{Representative recovery of the proposed two phase policy in the cradle relative frame. The left panel draws the vessel poses along the path, Phase 1 in blue and Phase 2 in red, together with the mothership side boundary, the dynamic positioning point, the cradle, and the handoff instant where control passes to Phase 2. The right panel gives the time histories of the value $V$, the thrust $F$, the rudder $\delta$, and the clearance to the obstacles with the two phase intervals shaded, where the actuators stay within their amplitude limits and the clearance stays above zero throughout.}
   \label{fig_representative}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}
   \centering
   \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
   \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
   \label{fig_trajectories}
 \end{figure*}
 
-\begin{table}[t]
+\begin{table}
   \centering
   \caption{Monte Carlo comparison over 100 sea scenarios. Dock, collision, and timeout counts, the median recovery time, the worst case clearance to the obstacles, and the mean and worst per call computation time. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
   \label{tab_montecarlo}
@@ -302,7 +302,7 @@ The proposed two phase recovery docked every scenario with no collision and no t
   \end{tabular}}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}
   \centering
   \includegraphics[width=0.92\linewidth]{fig/success_bar}
   \caption{Outcome of the 100 sea scenarios for each controller, counted as docks, collisions, and timeouts. The proposed policy docks every scenario, the barrier baselines a few less, and the ALOS CBF guidance far fewer.}
@@ -313,7 +313,7 @@ The proposed two phase recovery docked every scenario with no collision and no t
 
 The trained policy was deployed in an embedded processor in the loop setup, with the plant simulated on a host machine and the policy running on the target hardware in floating point. The actor inference time stayed well within the control period, leaving margin for the rest of the guidance and navigation software. Two effects separate this deployment from training, the round trip communication delay that shifts the state on which each action is computed, and the zero order hold that keeps the actuator rate command constant across the period. Because the policy commands actuator rates and the actuator states are part of the augmented state, both effects act as a bounded perturbation that the robust training already covers, and the recovery success stayed consistent with the numerical study of Section~\ref{sec_results_sim}. The timing and the gap between training and the embedded deployment appear in Fig.~\ref{fig_pil_timeseries}.
 
-\begin{figure}[t]
+\begin{figure}
   \centering
   \includegraphics[width=\linewidth]{fig/pil_timeseries}
   \caption{Processor in the loop time histories of the actuator commands and states under the zero order hold, compared with the training environment on the same initial condition.}

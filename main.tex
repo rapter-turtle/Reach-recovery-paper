@@ -258,6 +258,20 @@ The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^
 
 
 
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/montecarlo_summary}
+  \caption{Monte Carlo summary over the 100 sea scenarios. (a) Recovery outcome counted as docks, collisions, and timeouts. (b) Recovery time over the docked scenarios, the mean with one standard deviation. (c) Worst clearance to the obstacles over all scenarios. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
+  \label{fig_montecarlo}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
+  \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
+  \label{fig_trajectories}
+\end{figure*}
+
 
 The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, drawn over the head point at which the reach and avoid conditions are evaluated. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
 
@@ -266,6 +280,12 @@ The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three hea
 The learned policy is evaluated against the Phase 1 DOB-MPC with RaCBF carried through the entire docking \citep{park2026recovery}, run at two barrier gains, a nominal gain (1) and a stronger gain (2), and against an ALOS CBF guidance baseline. All controllers face the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the runs differ only in the control law. Recovery outcome, recovery time, and worst clearance to the obstacles are summarized in Fig.~\ref{fig_montecarlo}, and the per call computation time in Table~\ref{tab_compute}.
 
 A representative recovery is shown in Fig.~\ref{fig_representative}. In the left panel the vessel threads from the dynamic positioning point into the cradle, with Phase 1 handing over to Phase 2 at the instant the reach avoid value crosses into the set. In the right panel the value decreases through zero at the handoff, the thrust and rudder remain inside their amplitude limits, and the clearance stays positive throughout, so the recovery is safe and admissible at once.
+
+
+
+
+
+
 
 Aggregate behavior over the scenario set appears in Fig.~\ref{fig_montecarlo}. In panel (a) the proposed two phase policy docks every scenario, whereas the DOB-MPC with RaCBF loses a few to collisions at the nominal gain and to timeouts at the stronger gain, and the ALOS CBF is weakest with many collisions and timeouts. The dependence on the barrier gain is therefore non monotone, since a weak barrier admits contact while a strong one stalls the approach, and only a delicately tuned setting escapes both. The proposed policy carries the reach avoid value in place of a barrier gain and is invariant to that tuning. Panel (b) shows that the policy also recovers fastest on average with the tightest spread over the docked scenarios, since it noses straight into the pocket rather than circling before entry. Panel (c) shows that it keeps the largest worst case clearance and stays well clear of the obstacles, while the baselines that collide graze zero clearance. The computation times in Table~\ref{tab_compute} complete the comparison, where the Phase 2 reach avoid set control is the fastest and most consistent, a single network evaluation with no online optimization that sits comfortably inside the control period.
 
@@ -289,19 +309,6 @@ Trajectories over the full scenario set are collected in Fig.~\ref{fig_trajector
 
 
 
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=\linewidth]{fig/montecarlo_summary}
-  \caption{Monte Carlo summary over the 100 sea scenarios. (a) Recovery outcome counted as docks, collisions, and timeouts. (b) Recovery time over the docked scenarios, the mean with one standard deviation. (c) Worst clearance to the obstacles over all scenarios. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
-  \label{fig_montecarlo}
-\end{figure*}
-
-\begin{figure*}[t]
-  \centering
-  \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
-  \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
-  \label{fig_trajectories}
-\end{figure*}
 
 
 

@@ -20,6 +20,8 @@
 \usepackage[colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue]{hyperref}
 \usepackage{cleveref}
 
+
+
 \volume{00}
 \firstpage{1}
 \journalname{Control Engineering Practice}
@@ -234,6 +236,37 @@ The dynamics are discretised at the control period of Table~\ref{tab_set} and ea
 
 The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^\top$ that collects the wind, wave, and current loads acting on the hull. This disturbance is generated with the sea model of \citet{fossen2011handbook}, which superposes a mean wind force, a slowly varying wave drift together with a first order wave force, and a current, each resolved into the body surge, sway, and yaw axes. The robust design requires a bound $\mathcal{W}$ on this disturbance. Instead of fixing the bound by hand, the per axis maxima were identified experimentally by running a set of initial recovery runs across the sea states of interest and recording, for each axis, the largest load the combined wind, wave, and current imposed on the vessel. The resulting box is $\mathcal{W} = \{\,|w_u|\le 0.21~\text{kN},\ |w_v|\le 0.14~\text{kN},\ |w_r|\le 0.20~\text{kN\,m}\,\}$, and both the training adversary and the evaluation sea scenarios act within it.
 
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
+  \caption{Learned robust reach avoid set at three headings and the docking speed, in the head point frame $(x_h, y_h)$ at which the reach and avoid conditions are evaluated. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
+  \label{fig_set}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.9\linewidth]{fig/rep_run}
+  \caption{Representative recovery of the proposed two phase policy in the cradle relative frame. The left panel draws the vessel poses along the path, Phase 1 in blue and Phase 2 in}
+  \label{fig_representative}
+\end{figure*}
+
+
+
+
+The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, drawn over the head point at which the reach and avoid conditions are evaluated. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
+
+
+
+The learned policy is evaluated against the Phase 1 DOB-MPC with RaCBF carried through the entire docking \citep{park2026recovery}, run at two barrier gains, a nominal gain (1) and a stronger gain (2), and against an ALOS CBF guidance baseline. All controllers face the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the runs differ only in the control law. Recovery outcome, recovery time, and worst clearance to the obstacles are summarized in Fig.~\ref{fig_montecarlo}, and the per call computation time in Table~\ref{tab_compute}.
+
+A representative recovery is shown in Fig.~\ref{fig_representative}. In the left panel the vessel threads from the dynamic positioning point into the cradle, with Phase 1 handing over to Phase 2 at the instant the reach avoid value crosses into the set. In the right panel the value decreases through zero at the handoff, the thrust and rudder remain inside their amplitude limits, and the clearance stays positive throughout, so the recovery is safe and admissible at once. Trajectories over the full scenario set are collected in Fig.~\ref{fig_trajectories}. Every controller runs the same scenarios, and the proposed policy docks all of them along smooth head point paths. The baselines instead expose their failure modes. The RaCBF baseline grazes the cradle wall near the pocket, where the barrier asks for a lateral correction that the unactuated sway cannot supply, and the ALOS guidance veers toward the mothership side boundary.
+
+Aggregate behavior over the scenario set appears in Fig.~\ref{fig_montecarlo}. In panel (a) the proposed two phase policy docks every scenario, whereas the DOB-MPC with RaCBF loses a few to collisions at the nominal gain and to timeouts at the stronger gain, and the ALOS CBF is weakest with many collisions and timeouts. The dependence on the barrier gain is therefore non monotone, since a weak barrier admits contact while a strong one stalls the approach, and only a delicately tuned setting escapes both. The proposed policy carries the reach avoid value in place of a barrier gain and is invariant to that tuning. Panel (b) shows that the policy also recovers fastest on average with the tightest spread over the docked scenarios, since it noses straight into the pocket rather than circling before entry. Panel (c) shows that it keeps the largest worst case clearance and stays well clear of the obstacles, while the baselines that collide graze zero clearance. The computation times in Table~\ref{tab_compute} complete the comparison, where the Phase 2 reach avoid set control is the fastest and most consistent, a single network evaluation with no online optimization that sits comfortably inside the control period.
+
+
+
+
 \begin{table}
 \centering
 \renewcommand{\arraystretch}{1.2}
@@ -278,27 +311,7 @@ Episode horizon              & 30 [s]       \\
 \end{tabular}
 \end{table}
 
-The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, drawn over the head point at which the reach and avoid conditions are evaluated. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
 
-\begin{figure*}
-  \centering
-  \includegraphics[width=\linewidth]{fig/reach_avoid_set}
-  \caption{Learned robust reach avoid set at three headings and the docking speed, in the head point frame $(x_h, y_h)$ at which the reach and avoid conditions are evaluated. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
-  \label{fig_set}
-\end{figure*}
-
-The learned policy is evaluated against the Phase 1 DOB-MPC with RaCBF carried through the entire docking \citep{park2026recovery}, run at two barrier gains, a nominal gain (1) and a stronger gain (2), and against an ALOS CBF guidance baseline. All controllers face the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the runs differ only in the control law. Recovery outcome, recovery time, and worst clearance to the obstacles are summarized in Fig.~\ref{fig_montecarlo}, and the per call computation time in Table~\ref{tab_compute}.
-
-A representative recovery is shown in Fig.~\ref{fig_representative}. In the left panel the vessel threads from the dynamic positioning point into the cradle, with Phase 1 handing over to Phase 2 at the instant the reach avoid value crosses into the set. In the right panel the value decreases through zero at the handoff, the thrust and rudder remain inside their amplitude limits, and the clearance stays positive throughout, so the recovery is safe and admissible at once. Trajectories over the full scenario set are collected in Fig.~\ref{fig_trajectories}. Every controller runs the same scenarios, and the proposed policy docks all of them along smooth head point paths. The baselines instead expose their failure modes. The RaCBF baseline grazes the cradle wall near the pocket, where the barrier asks for a lateral correction that the unactuated sway cannot supply, and the ALOS guidance veers toward the mothership side boundary.
-
-Aggregate behavior over the scenario set appears in Fig.~\ref{fig_montecarlo}. In panel (a) the proposed two phase policy docks every scenario, whereas the DOB-MPC with RaCBF loses a few to collisions at the nominal gain and to timeouts at the stronger gain, and the ALOS CBF is weakest with many collisions and timeouts. The dependence on the barrier gain is therefore non monotone, since a weak barrier admits contact while a strong one stalls the approach, and only a delicately tuned setting escapes both. The proposed policy carries the reach avoid value in place of a barrier gain and is invariant to that tuning. Panel (b) shows that the policy also recovers fastest on average with the tightest spread over the docked scenarios, since it noses straight into the pocket rather than circling before entry. Panel (c) shows that it keeps the largest worst case clearance and stays well clear of the obstacles, while the baselines that collide graze zero clearance. The computation times in Table~\ref{tab_compute} complete the comparison, where the Phase 2 reach avoid set control is the fastest and most consistent, a single network evaluation with no online optimization that sits comfortably inside the control period.
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=0.92\linewidth]{fig/rep_run}
-  \caption{Representative recovery of the proposed two phase policy in the cradle relative frame. The left panel draws the vessel poses along the path, Phase 1 in blue and Phase 2 in red, with the head point of each pose as a small red circle, together with the mothership side boundary, the dynamic positioning point, the cradle, the reach avoid set at the handoff drawn over the head point, and the handoff instant where control passes to Phase 2. The right panel gives the time histories of the value $V$, the thrust $F$, the rudder $\delta$, and the clearance to the obstacles with the two phase intervals shaded, where the actuators stay within their amplitude limits and the clearance stays above zero throughout.}
-  \label{fig_representative}
-\end{figure*}
 
 \begin{figure*}
   \centering

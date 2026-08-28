@@ -210,7 +210,7 @@ The implementation follows the TD3 recipe. The minimum of the twin critics is us
 
 \section{Results}\label{sec_results}
 
-The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign of physical sea scenarios, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified USV model of Section~\ref{sec_model}, whose parameters are collected in Table~\ref{tab_params}, and the docking geometry collected in Table~\ref{tab_set}. The reach and avoid conditions are evaluated at a head point a fixed distance forward of the center of gravity, with position $(x_h, y_h)$, because the bow crosses the cradle mouth first. The target margin takes the box form
+The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign of physical sea scenarios, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified USV model of Section~\ref{sec_model}, whose parameters are collected in Table~\ref{tab_params}, and the docking geometry collected in Table~\ref{tab_set} and illustrated in Fig.~\ref{fig_setgeom}. The reach and avoid conditions are evaluated at a head point a fixed distance forward of the center of gravity, with position $(x_h, y_h)$, because the bow crosses the cradle mouth first. The target margin takes the box form
 \begin{equation}\label{eq_reach}
 \begin{aligned}
 \ell(s) = \max\big(&|x_h|-C_X,\ |y_h|-C_Y,\ |\psi_r|-\Theta, \\
@@ -242,14 +242,15 @@ The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three hea
 \hline
 \multicolumn{2}{c|}{\textbf{Physical Parameters}} & \multicolumn{2}{c}{\textbf{Hydrodynamic Parameters}} \\ \hline
 \textbf{Parameter} & \textbf{Value [Unit]} & \textbf{Parameter} & \textbf{Value} \\ \hline
-Moment arm ($l_r$)       & 3.5 [m]     & $X_u$        & 0.0845  \\
-Max thrust ($F_{\max}$)  & 20.5 [N]    & $X_{u|u|}$   & 0.0195  \\
-Rudder range             & 57.3 [deg]  & $Y_v$        & 0.0485  \\
-$m_{11}, m_{22}, m_{33}$ & 1, 1, 1     & $Y_{v|v|}$   & 0.0988  \\
-                         &             & $Y_r$        & 0.151   \\
-                         &             & $N_v$        & 0       \\
-                         &             & $N_r$        & 0.6939  \\
-                         &             & $N_{r|r|}$   & 0       \\
+Mass ($m$)                  & $1.5\times10^{3}$ [kg]         & $X_u$        & 134     \\
+Surge inertia ($m_{11}$)    & $1.59\times10^{3}$ [kg]        & $X_{u|u|}$   & 31.0    \\
+Sway inertia ($m_{22}$)     & $2.03\times10^{3}$ [kg]        & $Y_v$        & 98.2    \\
+Yaw inertia ($m_{33}$)      & $5.0\times10^{3}$ [kg\,m$^2$]  & $Y_{v|v|}$   & 200     \\
+Moment arm ($l_r$)          & 3.5 [m]                        & $Y_r$        & 306     \\
+Max thrust ($F_{\max}$)     & 0.86 [kN]                      & $N_v$        & 0       \\
+Rudder range ($\delta$)     & $\pm 57.3$ [deg]               & $N_r$        & $3.47\times10^{3}$ \\
+Rudder rate ($\dot\delta$)  & $\pm 45.8$ [deg/s]             & $N_{r|r|}$   & 0       \\
+Thrust rate ($\dot F$)      & $\pm 0.36$ [kN/s]              &              &         \\
 \hline
 \end{tabular}}
 \end{table}
@@ -274,6 +275,13 @@ Episode horizon              & 30 [s]       \\
 \hline
 \end{tabular}
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{fig/set_geometry}
+\caption{Geometry of the docking target and the collision set in the cradle fixed frame, with the variables of Table~\ref{tab_set}. The pocket half sizes $C_X$ and $C_Y$, the wall thickness $T_W$, the mothership side boundary $Y_{MS}$, the head point offset $l_h$, the relative heading $\psi_r$, and the stream speed $V_s$ are marked, and the target set $\mathcal{T}$ is shaded inside the cradle.}
+\label{fig_setgeom}
+\end{figure}
 
 \subsection{Numerical simulation}\label{sec_results_sim}
 

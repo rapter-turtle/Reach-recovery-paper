@@ -128,7 +128,7 @@ The rudder and thrust are bounded in amplitude, and their rates are bounded as w
 \end{equation}
 
 
-\begin{figure*}
+\begin{figure*}[t]
 \centering
 \includegraphics[width=\linewidth]{fig/recovery_scenario}
 \caption{Top view of the recovery scenario. The mothership advances at the stream speed $V_s$ while the USV executes the two phase recovery, first holding the dynamic positioning point and then docking from within the reach avoid set of the learned policy, and the zoom inset marks the target set inside the cradle and the surrounding collision set.}
@@ -151,7 +151,7 @@ The objective is to drive the USV so the head point reaches $\mathcal{T}$ while 
 \section{Control System Design}\label{sec_control}
 
 \subsection{Recovery Framework}\label{sec_framework}
-\begin{figure}
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.9\linewidth]{fig/recovery_flowchart}
 \caption{Recovery state machine. Phase 1 holds the DP point and hands control to the Phase 2 reach avoid policy once the state enters the learned set, and control falls back to Phase 1 if the state leaves the set before the cradle is entered.}
@@ -223,18 +223,14 @@ with the pocket half sizes, the heading tolerance, and the soft docking gate on 
 \begin{equation}\label{eq_avoid}
 g(s) = \max_{i}\, g_i(s).
 \end{equation}
-\begin{figure}
+
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.95\linewidth]{fig/set_geometry}
 \caption{Geometry of the docking target and the collision set in the cradle fixed frame, with the variables of Table~\ref{tab_set}. The pocket half sizes $C_X$ and $C_Y$, the wall thickness $T_W$, the mothership side boundary $Y_{MS}$, the head point offset $l_h$, the relative heading $\psi_r$, and the stream speed $V_s$ are marked, and the target set $\mathcal{T}$ is shaded inside the cradle.}
 \label{fig_setgeom}
 \end{figure}
 
-\subsection{Numerical simulation}\label{sec_results_sim}
-
-The dynamics are discretised at the control period of Table~\ref{tab_set} and each episode has a fixed horizon.
-
-The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^\top$ that collects the wind, wave, and current loads acting on the hull. This disturbance is generated with the sea model of \citet{fossen2011handbook}, which superposes a mean wind force, a slowly varying wave drift together with a first order wave force, and a current, each resolved into the body surge, sway, and yaw axes. The robust design requires a bound $\mathcal{W}$ on this disturbance. Instead of fixing the bound by hand, the per axis maxima were identified experimentally by running a set of initial recovery runs across the sea states of interest and recording, for each axis, the largest load the combined wind, wave, and current imposed on the vessel. The resulting box is $\mathcal{W} = \{\,|w_u|\le 0.21~\text{kN},\ |w_v|\le 0.14~\text{kN},\ |w_r|\le 0.20~\text{kN\,m}\,\}$, and both the training adversary and the evaluation sea scenarios act within it.
 
 
 \begin{figure*}[t]
@@ -253,6 +249,15 @@ The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^
 
 
 
+\subsection{Numerical simulation}\label{sec_results_sim}
+
+The dynamics are discretised at the control period of Table~\ref{tab_set} and each episode has a fixed horizon.
+
+The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^\top$ that collects the wind, wave, and current loads acting on the hull. This disturbance is generated with the sea model of \citet{fossen2011handbook}, which superposes a mean wind force, a slowly varying wave drift together with a first order wave force, and a current, each resolved into the body surge, sway, and yaw axes. The robust design requires a bound $\mathcal{W}$ on this disturbance. Instead of fixing the bound by hand, the per axis maxima were identified experimentally by running a set of initial recovery runs across the sea states of interest and recording, for each axis, the largest load the combined wind, wave, and current imposed on the vessel. The resulting box is $\mathcal{W} = \{\,|w_u|\le 0.21~\text{kN},\ |w_v|\le 0.14~\text{kN},\ |w_r|\le 0.20~\text{kN\,m}\,\}$, and both the training adversary and the evaluation sea scenarios act within it.
+
+
+
+
 
 The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, drawn over the head point at which the reach and avoid conditions are evaluated. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
 
@@ -267,7 +272,39 @@ Aggregate behavior over the scenario set appears in Fig.~\ref{fig_montecarlo}. I
 
 
 
-\begin{table}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
+  \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
+  \label{fig_trajectories}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\linewidth]{fig/montecarlo_summary}
+  \caption{Monte Carlo summary over the 100 sea scenarios. (a) Recovery outcome counted as docks, collisions, and timeouts. (b) Recovery time over the docked scenarios, the mean with one standard deviation. (c) Worst clearance to the obstacles over all scenarios. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
+  \label{fig_montecarlo}
+\end{figure*}
+
+\begin{table}[t]
+  \centering
+  \caption{Per call computation time of the docking controllers over the 100 sea scenarios, compared against the 0.2 s control period. For the proposed method this is the Phase 2 reach avoid set control, a single network evaluation.}
+  \label{tab_compute}
+  \begin{tabular}{lcc}
+    \hline
+    Controller & Mean [ms] & Max [ms] \\
+    \hline
+    \textbf{Reach avoid set control} & \textbf{0.6} & \textbf{1.7} \\
+    DOB-MPC + RaCBF (1) & 4.1 & 16.0 \\
+    DOB-MPC + RaCBF (2) & 4.0 & 15.7 \\
+    ALOS CBF & 4.2 & 56.2 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+
+\begin{table}[t]
 \centering
 \renewcommand{\arraystretch}{1.2}
 \caption{Physical and hydrodynamic parameters of the USV.}
@@ -290,7 +327,7 @@ $\dot F$     & $\pm 0.36$ [kN/s]              &              &         \\
 \end{tabular}}
 \end{table}
 
-\begin{table}
+\begin{table}[t]
 \centering
 \renewcommand{\arraystretch}{1.2}
 \caption{Parameters of the docking target, the collision set, and the training episode.}
@@ -312,36 +349,6 @@ Episode horizon              & 30 [s]       \\
 \end{table}
 
 
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
-  \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
-  \label{fig_trajectories}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=\linewidth]{fig/montecarlo_summary}
-  \caption{Monte Carlo summary over the 100 sea scenarios. (a) Recovery outcome counted as docks, collisions, and timeouts. (b) Recovery time over the docked scenarios, the mean with one standard deviation. (c) Worst clearance to the obstacles over all scenarios. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
-  \label{fig_montecarlo}
-\end{figure*}
-
-\begin{table}
-  \centering
-  \caption{Per call computation time of the docking controllers over the 100 sea scenarios, compared against the 0.2 s control period. For the proposed method this is the Phase 2 reach avoid set control, a single network evaluation.}
-  \label{tab_compute}
-  \begin{tabular}{lcc}
-    \hline
-    Controller & Mean [ms] & Max [ms] \\
-    \hline
-    \textbf{Reach avoid set control} & \textbf{0.6} & \textbf{1.7} \\
-    DOB-MPC + RaCBF (1) & 4.1 & 16.0 \\
-    DOB-MPC + RaCBF (2) & 4.0 & 15.7 \\
-    ALOS CBF & 4.2 & 56.2 \\
-    \hline
-  \end{tabular}
-\end{table}
 
 \subsection{Processor in the loop simulation}\label{sec_results_pil}
 

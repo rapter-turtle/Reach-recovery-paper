@@ -242,6 +242,22 @@ g(s) = \max_{i}\, g_i(s).
 \end{equation}
 The dynamics are discretised at $0.2$ s, a control rate of $5$ Hz, and each episode lasts $30$ s.
 
+
+
+\begin{figure*}
+  \centering
+  \includegraphics[width=0.92\linewidth]{fig/rep_run}
+  \caption{Representative recovery of the proposed two phase policy in the cradle relative frame. The left panel draws the vessel poses along the path, Phase 1 in blue and Phase 2 in red, together with the mothership side boundary, the dynamic positioning point, the cradle, and the handoff instant where control passes to Phase 2. The right panel gives the time histories of the value $V$, the thrust $F$, the rudder $\delta$, and the clearance to the obstacles with the two phase intervals shaded, where the actuators stay within their amplitude limits and the clearance stays above zero throughout.}
+  \label{fig_representative}
+\end{figure*}
+
+\subsection{Numerical simulation}\label{sec_results_sim}
+
+The reach avoid value and both adversarial actors were trained on the shared vehicle model with discount $\gamma=0.999$, an $N=5$ step target, and a control period of 0.2 s, under the adversary disturbance box $|w_u|\le 0.13$, $|w_v|\le 0.07$, and $|w_r|\le 0.04$. The learned policy is compared against the Phase 1 DOB-MPC with RaCBF carried through the docking \citep{park2026recovery}, evaluated at two barrier gains, a nominal gain (1) with poles 0.04 and 0.40 and a stronger gain (2) with poles 0.10 and 0.70, together with an ALOS CBF guidance baseline. Every controller ran the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the controllers differ only in their control law. The aggregate outcomes, namely the docked, collision, and timeout counts, the median recovery time, the worst case clearance to the obstacles, and the per call computation time, are collected in Table~\ref{tab_montecarlo}.
+
+The proposed two phase recovery docked every scenario with no collision and no timeout and stayed clear of the obstacles throughout, and it was also the fastest and most consistent to compute, since each action is a single network evaluation with no online optimization. The DOB-MPC with RaCBF depended strongly on the barrier gain. At the nominal gain it docked nearly all scenarios but struck the structure in a few, because near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver, while at the stronger gain the collisions vanished but the barrier held the hull off the cradle and a few scenarios timed out instead. A sweep of the gain showed that this dependence is not monotone, passing from collisions at the weakest settings through a narrow band that docked every scenario to timeouts at the strongest, so only a delicately tuned gain reached full success. Because the two phase policy carries the reach avoid value rather than a barrier gain, its outcome was invariant to this tuning. The ALOS CBF guidance was weakest, failing to dock untuned and recovering only a fraction of the scenarios even after heavy retuning, with many collisions and timeouts. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and rudder stay within their limits and the clearance remains positive throughout, the trajectories of the controllers over common scenarios appear in Fig.~\ref{fig_trajectories}, the outcome counts are summarized in Fig.~\ref{fig_success}, and the aggregate statistics are reported in Table~\ref{tab_montecarlo}.
+
+
 \begin{table}
 \centering
 \renewcommand{\arraystretch}{1.2}
@@ -265,22 +281,12 @@ Docking gate ($U_d$)    & 1.0 [m/s]    & $m_{11}, m_{22}, m_{33}$ & 1, 1, 1 \\
 \end{tabular}}
 \end{table}
 
-\subsection{Numerical simulation}\label{sec_results_sim}
 
-The reach avoid value and both adversarial actors were trained on the shared vehicle model with discount $\gamma=0.999$, an $N=5$ step target, and a control period of 0.2 s, under the adversary disturbance box $|w_u|\le 0.13$, $|w_v|\le 0.07$, and $|w_r|\le 0.04$. The learned policy is compared against the Phase 1 DOB-MPC with RaCBF carried through the docking \citep{park2026recovery}, evaluated at two barrier gains, a nominal gain (1) with poles 0.04 and 0.40 and a stronger gain (2) with poles 0.10 and 0.70, together with an ALOS CBF guidance baseline. Every controller ran the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the controllers differ only in their control law. The aggregate outcomes, namely the docked, collision, and timeout counts, the median recovery time, the worst case clearance to the obstacles, and the per call computation time, are collected in Table~\ref{tab_montecarlo}.
 
-The proposed two phase recovery docked every scenario with no collision and no timeout and stayed clear of the obstacles throughout, and it was also the fastest and most consistent to compute, since each action is a single network evaluation with no online optimization. The DOB-MPC with RaCBF depended strongly on the barrier gain. At the nominal gain it docked nearly all scenarios but struck the structure in a few, because near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver, while at the stronger gain the collisions vanished but the barrier held the hull off the cradle and a few scenarios timed out instead. A sweep of the gain showed that this dependence is not monotone, passing from collisions at the weakest settings through a narrow band that docked every scenario to timeouts at the strongest, so only a delicately tuned gain reached full success. Because the two phase policy carries the reach avoid value rather than a barrier gain, its outcome was invariant to this tuning. The ALOS CBF guidance was weakest, failing to dock untuned and recovering only a fraction of the scenarios even after heavy retuning, with many collisions and timeouts. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and rudder stay within their limits and the clearance remains positive throughout, the trajectories of the controllers over common scenarios appear in Fig.~\ref{fig_trajectories}, the outcome counts are summarized in Fig.~\ref{fig_success}, and the aggregate statistics are reported in Table~\ref{tab_montecarlo}.
 
 \begin{figure*}
   \centering
-  \includegraphics[width=0.92\linewidth]{fig/rep_run}
-  \caption{Representative recovery of the proposed two phase policy in the cradle relative frame. The left panel draws the vessel poses along the path, Phase 1 in blue and Phase 2 in red, together with the mothership side boundary, the dynamic positioning point, the cradle, and the handoff instant where control passes to Phase 2. The right panel gives the time histories of the value $V$, the thrust $F$, the rudder $\delta$, and the clearance to the obstacles with the two phase intervals shaded, where the actuators stay within their amplitude limits and the clearance stays above zero throughout.}
-  \label{fig_representative}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=0.86\linewidth]{fig/trajectories_montecarlo}
+  \includegraphics[width=0.8\linewidth]{fig/trajectories_montecarlo}
   \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
   \label{fig_trajectories}
 \end{figure*}

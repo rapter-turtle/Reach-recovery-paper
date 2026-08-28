@@ -221,6 +221,15 @@ with the pocket half sizes, the heading tolerance, and the soft docking gate on 
 \begin{equation}\label{eq_avoid}
 g(s) = \max_{i}\, g_i(s).
 \end{equation}
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{fig/set_geometry}
+\caption{Geometry of the docking target and the collision set in the cradle fixed frame, with the variables of Table~\ref{tab_set}. The pocket half sizes $C_X$ and $C_Y$, the wall thickness $T_W$, the mothership side boundary $Y_{MS}$, the head point offset $l_h$, the relative heading $\psi_r$, and the stream speed $V_s$ are marked, and the target set $\mathcal{T}$ is shaded inside the cradle.}
+\label{fig_setgeom}
+\end{figure}
+
+\subsection{Numerical simulation}\label{sec_results_sim}
+
 The dynamics are discretised at the control period of Table~\ref{tab_set} and each episode has a fixed horizon.
 
 The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^\top$ that collects the wind, wave, and current loads acting on the hull. This disturbance is generated with the sea model of \citet{fossen2011handbook}, which superposes a mean wind force, a slowly varying wave drift together with a first order wave force, and a current, each resolved into the body surge, sway, and yaw axes. The robust design requires a bound $\mathcal{W}$ on this disturbance. Instead of fixing the bound by hand, the per axis maxima were identified experimentally by running a set of initial recovery runs across the sea states of interest and recording, for each axis, the largest load the combined wind, wave, and current imposed on the vessel. The resulting box is $\mathcal{W} = \{\,|w_u|\le 0.21~\text{kN},\ |w_v|\le 0.14~\text{kN},\ |w_r|\le 0.20~\text{kN\,m}\,\}$, and both the training adversary and the evaluation sea scenarios act within it.
@@ -269,13 +278,6 @@ Episode horizon              & 30 [s]       \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.95\linewidth]{fig/set_geometry}
-\caption{Geometry of the docking target and the collision set in the cradle fixed frame, with the variables of Table~\ref{tab_set}. The pocket half sizes $C_X$ and $C_Y$, the wall thickness $T_W$, the mothership side boundary $Y_{MS}$, the head point offset $l_h$, the relative heading $\psi_r$, and the stream speed $V_s$ are marked, and the target set $\mathcal{T}$ is shaded inside the cradle.}
-\label{fig_setgeom}
-\end{figure}
-
 The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three headings and the docking speed, drawn over the head point at which the reach and avoid conditions are evaluated. The shaded region is the negative part of the learned value, the states from which the policy recovers the USV, and its zero level is the boundary of the set. The set narrows and shifts with heading, stays clear of the mothership side boundary, and reaches into the cradle pocket. Because the discounted value is a conservative under approximation, the shaded region is contained in the true robust reach avoid set.
 
 \begin{figure*}[t]
@@ -284,8 +286,6 @@ The converged robust reach avoid set is shown in Fig.~\ref{fig_set} at three hea
   \caption{Learned robust reach avoid set at three headings and the docking speed, in the head point frame $(x_h, y_h)$ at which the reach and avoid conditions are evaluated. The shaded region where the value $V$ is negative is the set of states from which the trained policy recovers the USV, bounded by its zero level and clear of the mothership.}
   \label{fig_set}
 \end{figure*}
-
-\subsection{Numerical simulation}\label{sec_results_sim}
 
 The learned policy is evaluated against the Phase 1 DOB-MPC with RaCBF carried through the entire docking \citep{park2026recovery}, run at two barrier gains, a nominal gain (1) and a stronger gain (2), and against an ALOS CBF guidance baseline. All controllers face the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the runs differ only in the control law. Recovery outcome, recovery time, and worst clearance to the obstacles are summarized in Fig.~\ref{fig_montecarlo}, and the per call computation time in Table~\ref{tab_compute}.
 

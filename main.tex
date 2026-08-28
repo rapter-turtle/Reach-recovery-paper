@@ -212,7 +212,7 @@ The implementation follows the TD3 recipe. The minimum of the twin critics is us
 
 \section{Results}\label{sec_results}
 
-The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign of physical sea scenarios, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified USV model of Section~\ref{sec_model}, whose parameters are collected in Table~\ref{tab_params}, and the docking geometry collected in Table~\ref{tab_set} and illustrated in Fig.~\ref{fig_setgeom}. The reach and avoid conditions are evaluated at a head point a fixed distance forward of the center of gravity, with position $(x_h, y_h)$, because the bow crosses the cradle mouth first. The target margin takes the box form
+The proposed framework was validated in two stages. The docking phase is first evaluated in numerical simulation, where the learned policy is compared against baseline controllers over a Monte Carlo campaign of physical sea scenarios, and it is then deployed on a processor in the loop setup to confirm real time feasibility and to expose the effects of delay and the zero order hold on embedded hardware. Both stages share the identified USV model of Section~\ref{sec_model}, whose parameters are collected in Table~\ref{tab_params}, and the docking geometry collected in Table~\ref{tab_set} and illustrated in Fig.~\ref{fig_setgeom}. In Table~\ref{tab_params} the symbol $m$ is the vessel mass, $m_{11}$, $m_{22}$, and $m_{33}$ are the surge, sway, and yaw inertias with their added terms, $l_r$ is the moment arm from the center of gravity to the thruster, $F_{\max}$ is the maximum thrust, $\delta$ is the rudder range, $\dot\delta$ and $\dot F$ are the rudder and thrust rate limits, and the remaining symbols are the hydrodynamic damping coefficients of Section~\ref{sec_model}. The reach and avoid conditions are evaluated at a head point a fixed distance forward of the center of gravity, with position $(x_h, y_h)$, because the bow crosses the cradle mouth first. The target margin takes the box form
 \begin{equation}\label{eq_reach}
 \begin{aligned}
 \ell(s) = \max\big(&|x_h|-C_X,\ |y_h|-C_Y,\ |\psi_r|-\Theta, \\
@@ -276,16 +276,16 @@ Aggregate behavior over the scenario set appears in Fig.~\ref{fig_montecarlo}. I
 \begin{tabular}{cc|cc}
 \hline
 \multicolumn{2}{c|}{\textbf{Physical Parameters}} & \multicolumn{2}{c}{\textbf{Hydrodynamic Parameters}} \\ \hline
-\textbf{Parameter} & \textbf{Value [Unit]} & \textbf{Parameter} & \textbf{Value} \\ \hline
-Mass ($m$)                  & $1.5\times10^{3}$ [kg]         & $X_u$        & 134     \\
-Surge inertia ($m_{11}$)    & $1.59\times10^{3}$ [kg]        & $X_{u|u|}$   & 31.0    \\
-Sway inertia ($m_{22}$)     & $2.03\times10^{3}$ [kg]        & $Y_v$        & 98.2    \\
-Yaw inertia ($m_{33}$)      & $5.0\times10^{3}$ [kg\,m$^2$]  & $Y_{v|v|}$   & 200     \\
-Moment arm ($l_r$)          & 3.5 [m]                        & $Y_r$        & 306     \\
-Max thrust ($F_{\max}$)     & 0.86 [kN]                      & $N_v$        & 0       \\
-Rudder range ($\delta$)     & $\pm 57.3$ [deg]               & $N_r$        & $3.47\times10^{3}$ \\
-Rudder rate ($\dot\delta$)  & $\pm 45.8$ [deg/s]             & $N_{r|r|}$   & 0       \\
-Thrust rate ($\dot F$)      & $\pm 0.36$ [kN/s]              &              &         \\
+\textbf{Symbol} & \textbf{Value [Unit]} & \textbf{Symbol} & \textbf{Value} \\ \hline
+$m$          & $1.5\times10^{3}$ [kg]         & $X_u$        & 134     \\
+$m_{11}$     & $1.59\times10^{3}$ [kg]        & $X_{u|u|}$   & 31.0    \\
+$m_{22}$     & $2.03\times10^{3}$ [kg]        & $Y_v$        & 98.2    \\
+$m_{33}$     & $5.0\times10^{3}$ [kg\,m$^2$]  & $Y_{v|v|}$   & 200     \\
+$l_r$        & 3.5 [m]                        & $Y_r$        & 306     \\
+$F_{\max}$   & 0.86 [kN]                      & $N_v$        & 0       \\
+$\delta$     & $\pm 57.3$ [deg]               & $N_r$        & $3.47\times10^{3}$ \\
+$\dot\delta$ & $\pm 45.8$ [deg/s]             & $N_{r|r|}$   & 0       \\
+$\dot F$     & $\pm 0.36$ [kN/s]              &              &         \\
 \hline
 \end{tabular}}
 \end{table}

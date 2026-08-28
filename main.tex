@@ -271,8 +271,6 @@ The reach avoid value and the two actors were trained on the shared model with d
 
 The proposed two phase recovery docked all 100 scenarios with 0 collisions and 0 timeouts, a median recovery time of 33 s, and a worst case clearance of 0.69 m, so it stayed well clear of the obstacles. The DOB-MPC with RaCBF swung with the barrier gain. At gain (1) it docked 95 of 100 but struck the structure in 5, with a worst clearance of $-0.003$ m and a median of 39.7 s, since near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver. At gain (2) it had 0 collisions but the stronger barrier held the hull off the cradle, so it timed out in 2 of 100, with a worst clearance of 0.41 m and a median of 41.6 s. A gain sweep showed the dependence is not monotone, moving from 7 collisions at the weakest gain, through a narrow band that docked all 100, to 2 timeouts at the strongest, so only a delicately tuned gain reached full success. The ALOS CBF guidance was weaker still, docking 0 of 100 untuned and, even after heavy retuning, only 69 of 100 with 16 collisions, 15 timeouts, a median of 48.3 s, and a worst clearance of $-0.003$ m. Because the two phase docking carries the reach avoid value rather than a barrier gain, its result held at every gain, and the setting that cost the baseline five hulls was invisible to it. The reach avoid policy also ran fastest and most consistently, at 0.6 ms per call on average with a worst case of 1.7 ms, against about 4 ms and a worst case of 16 ms for the DOB-MPC with RaCBF and about 4 ms with spikes to 56 ms for the ALOS CBF, since it is a single network evaluation with no online optimization. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and the rudder stay within their limits and the clearance stays positive throughout. The five scenario comparison across the controllers is shown in Fig.~\ref{fig_trajectories}, the outcome counts in Fig.~\ref{fig_success}, and the aggregate statistics in Table~\ref{tab_montecarlo}.
 
-The effect of the mothership wall during training was assessed by comparing the learned reach avoid sets with and without it. Without the wall the value function falsely marked about 44.9 percent of the states inside the mothership as reachable, an artifact that would corrupt the certified handoff of Section~\ref{sec_control}. Adding the wall cut this false reachable claim to about 0.1 percent, while the reachable fraction of the free state set only fell from about 47.3 percent to about 44.4 percent, so the correction removed the artifact without materially shrinking the usable set.
-
 \begin{figure*}[t]
   \centering
   \includegraphics[width=0.92\linewidth]{fig/rep_run}
@@ -313,23 +311,7 @@ The effect of the mothership wall during training was assessed by comparing the 
 
 \subsection{Processor in the loop simulation}\label{sec_results_pil}
 
-The trained policy was deployed on an embedded processor in the loop setup in which the plant was simulated on a host machine while the policy ran on the target hardware in floating point. The per step inference time of the actor network remained well below the 0.2 s control period at 5 Hz, leaving margin for the remaining guidance and navigation software. Two effects separate this deployment from the training environment. First, the round trip communication delay shifts the state on which the action is computed, and second, the zero order hold keeps the actuator rate command constant over the full period rather than updating it continuously. Because the policy commands actuator rates and the actuator states are part of the augmented state, both effects act as a bounded perturbation that the robust training already covers, and the recovery success rate observed in the processor in the loop campaign remained consistent with the numerical results of Section~\ref{sec_results_sim}. The measured timing statistics and the gap between the training environment and the embedded deployment are reported in Table~\ref{tab_pil} and Fig.~\ref{fig_pil_timeseries}.
-
-\begin{table}[t]
-  \centering
-  \caption{Processor in the loop timing and performance. Actor inference time statistics, end to end loop latency, and recovery success rate compared with the training environment.}
-  \label{tab_pil}
-  \resizebox{\linewidth}{!}{%
-  \begin{tabular}{lcc}
-    \hline
-    Quantity & Training environment & Embedded target \\
-    \hline
-    Inference time [ms] & & \\
-    Loop latency [ms] & & \\
-    Success rate & & \\
-    \hline
-  \end{tabular}}
-\end{table}
+The trained policy was deployed on an embedded processor in the loop setup in which the plant was simulated on a host machine while the policy ran on the target hardware in floating point. The per step inference time of the actor network remained well below the 0.2 s control period at 5 Hz, leaving margin for the remaining guidance and navigation software. Two effects separate this deployment from the training environment. First, the round trip communication delay shifts the state on which the action is computed, and second, the zero order hold keeps the actuator rate command constant over the full period rather than updating it continuously. Because the policy commands actuator rates and the actuator states are part of the augmented state, both effects act as a bounded perturbation that the robust training already covers, and the recovery success rate observed in the processor in the loop campaign remained consistent with the numerical results of Section~\ref{sec_results_sim}. The measured timing statistics and the gap between the training environment and the embedded deployment are reported in Fig.~\ref{fig_pil_timeseries}.
 
 \begin{figure}[t]
   \centering

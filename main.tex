@@ -277,9 +277,9 @@ Episode horizon              & 30 [s]       \\
 
 \subsection{Numerical simulation}\label{sec_results_sim}
 
-The reach avoid value and both adversarial actors were trained on the shared vehicle model with discount $\gamma=0.999$, an $N=5$ step target, and a control period of 0.2 s, under the adversary disturbance box $|w_u|\le 0.13$, $|w_v|\le 0.07$, and $|w_r|\le 0.04$. The learned policy is compared against the Phase 1 DOB-MPC with RaCBF carried through the docking \citep{park2026recovery}, evaluated at two barrier gains, a nominal gain (1) with poles 0.04 and 0.40 and a stronger gain (2) with poles 0.10 and 0.70, together with an ALOS CBF guidance baseline. Every controller ran the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the controllers differ only in their control law. The aggregate outcomes, namely the docked, collision, and timeout counts, the median recovery time, the worst case clearance to the obstacles, and the per call computation time, are collected in Table~\ref{tab_montecarlo}.
+The reach avoid value and both adversarial actors were trained on the shared vehicle model with discount $\gamma=0.999$, an $N=5$ step target, and a control period of 0.2 s, under the adversary disturbance box $|w_u|\le 0.13$, $|w_v|\le 0.07$, and $|w_r|\le 0.04$. The learned policy is compared against the Phase 1 DOB-MPC with RaCBF carried through the docking \citep{park2026recovery}, evaluated at two barrier gains, a nominal gain (1) with poles 0.04 and 0.40 and a stronger gain (2) with poles 0.10 and 0.70, together with an ALOS CBF guidance baseline. Every controller ran the same set of physical sea scenarios, each a wind, wave, and current field drawn from a Fossen sea model, with identical initial states and disturbance seeds, so the controllers differ only in their control law. The docked, collision, and timeout counts, the recovery time, and the worst case clearance to the obstacles are summarized in Fig.~\ref{fig_montecarlo}, and the per call computation time in Table~\ref{tab_compute}.
 
-The proposed two phase recovery docked every scenario with no collision and no timeout and stayed clear of the obstacles throughout, and it was also the fastest and most consistent to compute, since each action is a single network evaluation with no online optimization. The DOB-MPC with RaCBF depended strongly on the barrier gain. At the nominal gain it docked nearly all scenarios but struck the structure in a few, because near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver, while at the stronger gain the collisions vanished but the barrier held the hull off the cradle and a few scenarios timed out instead. A sweep of the gain showed that this dependence is not monotone, passing from collisions at the weakest settings through a narrow band that docked every scenario to timeouts at the strongest, so only a delicately tuned gain reached full success. Because the two phase policy carries the reach avoid value rather than a barrier gain, its outcome was invariant to this tuning. The ALOS CBF guidance was weakest, failing to dock untuned and recovering only a fraction of the scenarios even after heavy retuning, with many collisions and timeouts. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and rudder stay within their limits and the clearance remains positive throughout, the trajectories of the controllers over common scenarios appear in Fig.~\ref{fig_trajectories}, the outcome counts are summarized in Fig.~\ref{fig_success}, and the aggregate statistics are reported in Table~\ref{tab_montecarlo}.
+The proposed two phase recovery docked every scenario with no collision and no timeout and stayed clear of the obstacles throughout, and it was also the fastest and most consistent to compute, since each action is a single network evaluation with no online optimization. The DOB-MPC with RaCBF depended strongly on the barrier gain. At the nominal gain it docked nearly all scenarios but struck the structure in a few, because near the pocket the barrier demands lateral corrections that the unactuated sway cannot deliver, while at the stronger gain the collisions vanished but the barrier held the hull off the cradle and a few scenarios timed out instead. A sweep of the gain showed that this dependence is not monotone, passing from collisions at the weakest settings through a narrow band that docked every scenario to timeouts at the strongest, so only a delicately tuned gain reached full success. Because the two phase policy carries the reach avoid value rather than a barrier gain, its outcome was invariant to this tuning. The ALOS CBF guidance was weakest, failing to dock untuned and recovering only a fraction of the scenarios even after heavy retuning, with many collisions and timeouts. A representative recovery is shown in Fig.~\ref{fig_representative}, where the thrust and rudder stay within their limits and the clearance remains positive throughout, the trajectories of the controllers over common scenarios appear in Fig.~\ref{fig_trajectories}, the outcome, the recovery time, and the worst clearance are summarized in Fig.~\ref{fig_montecarlo}, and the per call computation time is reported in Table~\ref{tab_compute}.
 
 \begin{figure*}
   \centering
@@ -295,29 +295,28 @@ The proposed two phase recovery docked every scenario with no collision and no t
   \label{fig_trajectories}
 \end{figure*}
 
-\begin{table}
+\begin{figure*}[t]
   \centering
-  \caption{Monte Carlo comparison over 100 sea scenarios. Dock, collision, and timeout counts, the median recovery time, the worst case clearance to the obstacles, and the mean and worst per call computation time. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
-  \label{tab_montecarlo}
-  \resizebox{\linewidth}{!}{%
-  \begin{tabular}{lcccccc}
-    \hline
-    Controller & Dock & Collision & Timeout & Median time [s] & Worst clearance [m] & Compute mean (max) [ms] \\
-    \hline
-    Proposed (two phase) & 100 & 0 & 0 & 33.0 & $+0.69$ & 0.6 (1.7) \\
-    DOB-MPC + RaCBF (1) & 95 & 5 & 0 & 39.7 & $-0.003$ & 4.1 (16.0) \\
-    DOB-MPC + RaCBF (2) & 98 & 0 & 2 & 41.6 & $+0.41$ & 4.0 (15.7) \\
-    ALOS CBF & 69 & 16 & 15 & 48.3 & $-0.003$ & 4.2 (56.2) \\
-    \hline
-  \end{tabular}}
-\end{table}
+  \includegraphics[width=\linewidth]{fig/montecarlo_summary}
+  \caption{Monte Carlo summary over the 100 sea scenarios. (a) Recovery outcome counted as docks, collisions, and timeouts. (b) Recovery time over the docked scenarios, the mean with one standard deviation. (c) Worst clearance to the obstacles over all scenarios. The two barrier gains of the DOB-MPC with RaCBF baseline are labelled (1) and (2).}
+  \label{fig_montecarlo}
+\end{figure*}
 
-\begin{figure}
+\begin{table}[t]
   \centering
-  \includegraphics[width=0.92\linewidth]{fig/success_bar}
-  \caption{Outcome of the 100 sea scenarios for each controller, counted as docks, collisions, and timeouts. The proposed policy docks every scenario, the barrier baselines a few less, and the ALOS CBF guidance far fewer.}
-  \label{fig_success}
-\end{figure}
+  \caption{Per call computation time over the 100 sea scenarios, compared against the 0.2 s control period. The proposed policy is a single network evaluation.}
+  \label{tab_compute}
+  \begin{tabular}{lcc}
+    \hline
+    Controller & Mean [ms] & Max [ms] \\
+    \hline
+    \textbf{Proposed (two phase)} & \textbf{0.6} & \textbf{1.7} \\
+    DOB-MPC + RaCBF (1) & 4.1 & 16.0 \\
+    DOB-MPC + RaCBF (2) & 4.0 & 15.7 \\
+    ALOS CBF & 4.2 & 56.2 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \subsection{Processor in the loop simulation}\label{sec_results_pil}
 

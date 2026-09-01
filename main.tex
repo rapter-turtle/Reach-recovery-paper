@@ -267,7 +267,7 @@ The vessel is exposed to an environmental disturbance $\tau_w = [w_u, w_v, w_r]^
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\linewidth]{fig/trajectories_montecarlo}
-  \caption{Head point trajectories for five representative scenarios, the same five for every controller, in the cradle relative frame. Docks are solid with a star, collisions and timeouts are dashed with a cross and a square, and the cradle pocket and the mothership side boundary are drawn. The proposed policy docks all five, while each baseline shows its failure mode.}
+  \caption{Head point trajectories for five representative sea scenarios under each controller. Successful dockings are drawn solid and end with a star, while collisions and timeouts are drawn dashed and end with a cross or a square. Each panel shows the cradle pocket, the mothership side boundary, and the dynamic positioning point marked with a diamond. The proposed panel shades the reach avoid set at the dynamic positioning point, the states from which the learned policy recovers the vehicle, whereas the baseline panels shade the funnel control barrier corridor enforced by DOB-MPC with RaCBF and the ALOS CBF. The proposed policy docks in every scenario and each baseline exhibits its own failure mode.}
   \label{fig_trajectories}
 \end{figure*}
 
